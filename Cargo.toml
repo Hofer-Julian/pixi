@@ -250,6 +250,7 @@ xxhash-rust = { workspace = true }
 zip = { workspace = true, features = ["deflate", "time"] }
 
 pixi_manifest = { path = "crates/pixi_manifest" }
+taplo = "0.13.0"
 
 [target.'cfg(unix)'.dependencies]
 libc = { workspace = true, default-features = false }

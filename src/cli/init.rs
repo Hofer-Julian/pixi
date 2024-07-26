@@ -9,6 +9,7 @@ use miette::IntoDiagnostic;
 use minijinja::{context, Environment};
 use pixi_manifest::{pyproject::PyProjectToml, DependencyOverwriteBehavior, FeatureName, SpecType};
 use rattler_conda_types::{NamedChannelOrUrl, Platform};
+use std::sync::LazyLock;
 use url::Url;
 
 use crate::{
@@ -127,6 +128,12 @@ platforms = {{ platforms }}
 [tool.pixi.tasks]
 
 "#;
+
+static TAPLO_FORMAT_OPTIONS: LazyLock<taplo::formatter::Options> =
+    LazyLock::new(|| taplo::formatter::Options {
+        reorder_keys: true,
+        ..Default::default()
+    });
 
 const GITIGNORE_TEMPLATE: &str = r#"# pixi environments
 .pixi
@@ -253,6 +260,7 @@ pub async fn execute(args: Args) -> miette::Result<()> {
                     },
                 )
                 .unwrap();
+            let rv = taplo::formatter::format(rv, TAPLO_FORMAT_OPTIONS);
             if let Err(e) = {
                 fs::OpenOptions::new()
                     .append(true)
@@ -301,7 +309,7 @@ pub async fn execute(args: Args) -> miette::Result<()> {
                     },
                 )
                 .unwrap();
-            fs::write(&pyproject_manifest_path, rv).into_diagnostic()?;
+            let rv = fs::write(&pyproject_manifest_path, rv).into_diagnostic()?;
         // Create a 'pixi.toml' manifest
         } else {
             // Check if the 'pixi.toml' file doesn't already exist. We don't want to
