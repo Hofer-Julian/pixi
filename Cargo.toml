@@ -168,7 +168,7 @@ repository.workspace = true
 version = "0.39.2"
 
 [features]
-default = ["rustls-tls"]
+default = []
 native-tls = [
   "reqwest/native-tls",
   "reqwest/native-tls-alpn",
@@ -185,6 +185,15 @@ rustls-tls = [
 ]
 self_update = []
 slow_integration_tests = []
+
+# We use native-tls on Windows with the expectation
+# that this avoids error 10054 (An existing connection was forcibly closed by the remote host)
+# when downloading repodata
+[target.'cfg(windows)'.features]
+default = ["native-tls"]
+
+[target.'cfg(not(windows))'.features]
+default = ["rustls-tls"]
 
 [dependencies]
 ahash = { workspace = true }
