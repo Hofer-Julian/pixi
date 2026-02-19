@@ -43,6 +43,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/noarch/pixi-pycharm-0.0.8-unix_hf108a03_2.conda
       - conda: https://prefix.dev/conda-forge/noarch/pluggy-1.6.0-pyhf9edf01_1.conda
       - conda: https://prefix.dev/conda-forge/linux-64/psutil-7.2.2-py314h0f05182_0.conda
+      - conda: https://prefix.dev/conda-forge/linux-64/py-pixi-build-backend-0.4.3-py310h200a542_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/py-rattler-0.20.0-py310h70157a2_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/pydantic-2.12.5-pyhcf101f3_1.conda
       - conda: https://prefix.dev/conda-forge/linux-64/pydantic-core-2.41.5-py314h2e6c369_1.conda
@@ -71,8 +72,6 @@ environments:
       - conda: https://prefix.dev/conda-forge/linux-64/yaml-0.2.5-h280c20c_3.conda
       - conda: https://prefix.dev/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_6.conda
       - conda: .
-      - conda: ../../py-pixi-build-backend
-        build: hb0f4dca_0
       linux-aarch64:
       - conda: https://prefix.dev/conda-forge/linux-aarch64/_openmp_mutex-4.5-2_gnu.tar.bz2
       - conda: https://prefix.dev/conda-forge/noarch/_python_abi3_support-1.0-hd8ed1ab_2.conda
@@ -110,6 +109,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/noarch/pixi-pycharm-0.0.8-unix_hf108a03_2.conda
       - conda: https://prefix.dev/conda-forge/noarch/pluggy-1.6.0-pyhf9edf01_1.conda
       - conda: https://prefix.dev/conda-forge/linux-aarch64/psutil-7.2.2-py312hd41f8a7_0.conda
+      - conda: https://prefix.dev/conda-forge/linux-aarch64/py-pixi-build-backend-0.4.3-py310h7ba0a5f_0.conda
       - conda: https://prefix.dev/conda-forge/linux-aarch64/py-rattler-0.20.0-py310h48c5ec3_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/pydantic-2.12.5-pyhcf101f3_1.conda
       - conda: https://prefix.dev/conda-forge/linux-aarch64/pydantic-core-2.41.5-py312h5eb8f6c_1.conda
@@ -138,8 +138,6 @@ environments:
       - conda: https://prefix.dev/conda-forge/linux-aarch64/yaml-0.2.5-h80f16a2_3.conda
       - conda: https://prefix.dev/conda-forge/linux-aarch64/zstd-1.5.7-h85ac4a6_6.conda
       - conda: .
-      - conda: ../../py-pixi-build-backend
-        build: he8cfe8b_0
       osx-arm64:
       - conda: https://prefix.dev/conda-forge/noarch/_python_abi3_support-1.0-hd8ed1ab_2.conda
       - conda: https://prefix.dev/conda-forge/noarch/annotated-types-0.7.0-pyhd8ed1ab_1.conda
@@ -169,6 +167,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/noarch/pixi-pycharm-0.0.8-unix_hf108a03_2.conda
       - conda: https://prefix.dev/conda-forge/noarch/pluggy-1.6.0-pyhf9edf01_1.conda
       - conda: https://prefix.dev/conda-forge/osx-arm64/psutil-7.2.2-py314ha14b1ff_0.conda
+      - conda: https://prefix.dev/conda-forge/osx-arm64/py-pixi-build-backend-0.4.3-py310h5e7bd3f_0.conda
       - conda: https://prefix.dev/conda-forge/osx-arm64/py-rattler-0.20.0-py310h9bd0991_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/pydantic-2.12.5-pyhcf101f3_1.conda
       - conda: https://prefix.dev/conda-forge/osx-arm64/pydantic-core-2.41.5-py314haad56a0_1.conda
@@ -197,8 +196,6 @@ environments:
       - conda: https://prefix.dev/conda-forge/osx-arm64/yaml-0.2.5-h925e9cb_3.conda
       - conda: https://prefix.dev/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
       - conda: .
-      - conda: ../../py-pixi-build-backend
-        build: h60d57d3_0
       win-64:
       - conda: https://prefix.dev/conda-forge/noarch/_python_abi3_support-1.0-hd8ed1ab_2.conda
       - conda: https://prefix.dev/conda-forge/noarch/annotated-types-0.7.0-pyhd8ed1ab_1.conda
@@ -226,6 +223,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/noarch/pixi-pycharm-0.0.8-win_hba80fca_2.conda
       - conda: https://prefix.dev/conda-forge/noarch/pluggy-1.6.0-pyhf9edf01_1.conda
       - conda: https://prefix.dev/conda-forge/win-64/psutil-7.2.2-py314hc5dbbe4_0.conda
+      - conda: https://prefix.dev/conda-forge/win-64/py-pixi-build-backend-0.4.3-py310hc5c0c7e_0.conda
       - conda: https://prefix.dev/conda-forge/win-64/py-rattler-0.20.0-py310hb39080a_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/pydantic-2.12.5-pyhcf101f3_1.conda
       - conda: https://prefix.dev/conda-forge/win-64/pydantic-core-2.41.5-py314h9f07db2_1.conda
@@ -257,8 +255,6 @@ environments:
       - conda: https://prefix.dev/conda-forge/win-64/yaml-0.2.5-h6a83c73_3.conda
       - conda: https://prefix.dev/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
       - conda: .
-      - conda: ../../py-pixi-build-backend
-        build: h9490d1a_0
   lint:
     channels:
     - url: https://prefix.dev/conda-forge/
@@ -1144,9 +1140,6 @@ packages:
   - pyyaml
   - pydantic >=2.8.2,<3
   - py-rattler >=0.20,<0.21
-  sources:
-    py-pixi-build-backend:
-      path: ../../py-pixi-build-backend
 - conda: https://prefix.dev/conda-forge/noarch/pixi-pycharm-0.0.8-unix_hf108a03_2.conda
   sha256: d61d62c0a7fa6ca17d9463d05a217040c621ca64b70a7afb4640e0ccfd63dec6
   md5: 3b56ce640f2fdb4ea97f012ef924130e
@@ -1226,62 +1219,72 @@ packages:
   license_family: BSD
   size: 249950
   timestamp: 1769678167309
-- conda: ../../py-pixi-build-backend
-  name: py-pixi-build-backend
-  version: 0.4.2
-  build: h60d57d3_0
-  subdir: osx-arm64
-  variants:
-    target_platform: osx-arm64
+- conda: https://prefix.dev/conda-forge/linux-64/py-pixi-build-backend-0.4.3-py310h200a542_0.conda
+  noarch: python
+  sha256: 6f2e1975ef56add46f4796e9c50bc419cb283c5fa37360f096f475545d7d59f8
+  md5: 38562f308a839c862a2e84c1153e745e
   depends:
+  - python
   - pixi-build-api-version >=4,<5
-  - python >=3.8
-  - typing_extensions
-  - python_abi 3.14.* *_cp314
-  license: BSD-3-Clause
-- conda: ../../py-pixi-build-backend
-  name: py-pixi-build-backend
-  version: 0.4.2
-  build: h9490d1a_0
-  subdir: win-64
-  variants:
-    target_platform: win-64
-  depends:
-  - pixi-build-api-version >=4,<5
-  - python >=3.8
-  - typing_extensions
-  - python_abi 3.14.* *_cp314
-  license: BSD-3-Clause
-- conda: ../../py-pixi-build-backend
-  name: py-pixi-build-backend
-  version: 0.4.2
-  build: hb0f4dca_0
-  subdir: linux-64
-  variants:
-    target_platform: linux-64
-  depends:
-  - pixi-build-api-version >=4,<5
-  - python >=3.8
-  - typing_extensions
-  - python_abi 3.14.* *_cp314
+  - __glibc >=2.17,<3.0.a0
+  - _python_abi3_support 1.*
+  - cpython >=3.10
+  - openssl >=3.5.5,<4.0a0
   constrains:
   - __glibc >=2.17
   license: BSD-3-Clause
-- conda: ../../py-pixi-build-backend
-  name: py-pixi-build-backend
-  version: 0.4.2
-  build: he8cfe8b_0
-  subdir: linux-aarch64
-  variants:
-    target_platform: linux-aarch64
+  license_family: BSD
+  size: 10015218
+  timestamp: 1770648185125
+- conda: https://prefix.dev/conda-forge/linux-aarch64/py-pixi-build-backend-0.4.3-py310h7ba0a5f_0.conda
+  noarch: python
+  sha256: f8a2d3290e08cfee1110dce5e00f2cef93941967cdbe2dd5c07d635e7734bcb3
+  md5: 18911853c0c087c06185c1a8f4a84bb7
   depends:
+  - python
   - pixi-build-api-version >=4,<5
-  - python >=3.8
-  - typing_extensions
-  - python_abi 3.12.* *_cp312
+  - _python_abi3_support 1.*
+  - cpython >=3.10
+  - openssl >=3.5.5,<4.0a0
   constrains:
   - __glibc >=2.17
   license: BSD-3-Clause
+  license_family: BSD
+  size: 9782346
+  timestamp: 1770648205179
+- conda: https://prefix.dev/conda-forge/osx-arm64/py-pixi-build-backend-0.4.3-py310h5e7bd3f_0.conda
+  noarch: python
+  sha256: 77c80c9b70408aca7f12d4d38574ac0806f3dd215370770f1bc69b3d7ab36d50
+  md5: 49fb01e46e6a0eb5e3c7eb56bbd8931f
+  depends:
+  - python
+  - pixi-build-api-version >=4,<5
+  - __osx >=11.0
+  - _python_abi3_support 1.*
+  - cpython >=3.10
+  - openssl >=3.5.5,<4.0a0
+  constrains:
+  - __osx >=11.0
+  license: BSD-3-Clause
+  license_family: BSD
+  size: 9140715
+  timestamp: 1770648264395
+- conda: https://prefix.dev/conda-forge/win-64/py-pixi-build-backend-0.4.3-py310hc5c0c7e_0.conda
+  noarch: python
+  sha256: fd701e675bd7620fa630eaba65f5a5f6e5c1a25028235972f6df70c99b026796
+  md5: 37b4211829241f008cd937982f0ffae9
+  depends:
+  - python
+  - pixi-build-api-version >=4,<5
+  - vc >=14.3,<15
+  - vc14_runtime >=14.44.35208
+  - ucrt >=10.0.20348.0
+  - _python_abi3_support 1.*
+  - cpython >=3.10
+  license: BSD-3-Clause
+  license_family: BSD
+  size: 10828832
+  timestamp: 1770648228948
 - conda: https://prefix.dev/conda-forge/linux-64/py-rattler-0.20.0-py310h70157a2_0.conda
   noarch: python
   sha256: 8ced54c9247b69d9f0da92a7effd06633ab7531197ae7a2a25149aceee606ecd
