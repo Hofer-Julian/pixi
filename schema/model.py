@@ -472,6 +472,7 @@ RunConstraintsField = Field(
     description="The `conda` run-time version constraints. These constrain the versions of packages that may be installed in the run environment without explicitly requiring them. If the package is installed as a dependency of another package, it must satisfy these constraints. See https://pixi.sh/latest/build/dependency_types/ for more information.",
 )
 Dependencies = dict[CondaPackageName, MatchSpec] | None
+ExtraDependencies = dict[NonEmptyStr, dict[CondaPackageName, MatchSpec]] | None
 
 
 ################
@@ -909,6 +910,11 @@ class Package(StrictBaseModel):
     host_dependencies: Dependencies = HostDependenciesField
     build_dependencies: Dependencies = BuildDependenciesField
     run_dependencies: Dependencies = RunDependenciesField
+    extra_dependencies: ExtraDependencies = Field(
+        None,
+        description="Optional dependency groups that can be requested through MatchSpec extras. Each group uses the same conda package specification syntax as run-dependencies.",
+        examples=[{"test": {"pytest": ">=8", "hypothesis": "*"}}],
+    )
     run_constraints: Dependencies = RunConstraintsField
 
     target: dict[TargetName, PackageTarget] | None = Field(
@@ -947,6 +953,11 @@ class Build(StrictBaseModel):
     backend: BuildBackend = Field(..., description="The build backend to instantiate")
     channels: list[Channel] | None = Field(
         None, description="The `conda` channels that are used to fetch the build backend from"
+    )
+    flags: list[NonEmptyStr] | None = Field(
+        None,
+        description="Plain string flags recorded on built packages for v3 package variant selection",
+        examples=[["cuda", "blas_openblas"]],
     )
     additional_dependencies: Dependencies = Field(
         None, description="Additional dependencies to install alongside the build backend"

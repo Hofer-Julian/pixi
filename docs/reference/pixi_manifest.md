@@ -1330,6 +1330,7 @@ The build system is a table that can contain the following fields:
   - `rev`: a string representing SHA revision to checkout.
   - `subdirectory`: a string representing path to subdirectory to use.
 - `channels`: specifies the channels to get the build backend from.
+- `flags`: package variant flags recorded in the produced package metadata. Setting this field opts the build into the v3 package metadata used by pixi-build.
 - `backend`: specifies the build backend to use. This is a table that can contain the following fields:
   - `name`: the name of the build backend to use. This will also be the executable name.
   - `version`: the version of the build backend to use.
@@ -1344,6 +1345,14 @@ More documentation on the backends can be found in the [build backend documentat
 
 ```toml
 --8<-- "docs/source_files/pixi_tomls/pixi-package-manifest.toml:build-system"
+```
+
+#### Build flags example
+
+```toml
+[package.build]
+backend = { name = "pixi-build-python", version = "0.*" }
+flags = ["cuda", "blas_openblas"]
 ```
 
 #### Target-specific build configuration example
@@ -1375,6 +1384,7 @@ Each of these tables has a different purpose and is used to define the dependenc
 - [`build-dependencies`](#build-dependencies): Dependencies that are required to build the package on the build platform.
 - [`host-dependencies`](#host-dependencies): Dependencies that are required during the build process, to link against the package on the target platform.
 - [`run-dependencies`](#run-dependencies): Dependencies that are required to run the package on the target platform.
+- [`extra-dependencies`](#extra-dependencies): Optional run dependency groups that consumers can request through MatchSpec extras.
 - [`run-constraints`](#run-constraints): Version constraints applied to the package's run environment, applied only when the constrained package is already pulled in by another dependency.
 
 
@@ -1426,6 +1436,21 @@ The `run-dependencies` are the packages that will be installed in the environmen
 
 ```toml
 --8<-- "docs/source_files/pixi_tomls/pixi-package-manifest.toml:run-dependencies"
+```
+
+### `extra-dependencies`
+
+The `extra-dependencies` table defines optional run dependency groups for a package. Each group uses the same conda package specification syntax as `run-dependencies`, including inline MatchSpec fields such as `extras`, `flags`, and `when`.
+
+These groups are emitted as v3 package metadata and can be requested by consumers through MatchSpec extras.
+
+```toml
+[package.extra-dependencies.test]
+pytest = ">=8"
+hypothesis = "*"
+
+[package.extra-dependencies.cuda]
+cuda-version = ">=12"
 ```
 
 ### `run-constraints`

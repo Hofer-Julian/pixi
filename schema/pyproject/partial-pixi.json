@@ -379,6 +379,21 @@
           "type": "object",
           "additionalProperties": true
         },
+        "flags": {
+          "title": "Flags",
+          "description": "Plain string flags recorded on built packages for v3 package variant selection",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "examples": [
+            [
+              "cuda",
+              "blas_openblas"
+            ]
+          ]
+        },
         "secrets": {
           "title": "Secrets",
           "description": "Names of environment variables to expose as secrets to the build script. Values are read from the host environment at build time; only the names live in the manifest. Forwarded to rattler-build's `build.script.secrets`.",
@@ -1319,6 +1334,39 @@
             },
             {
               "$ref": "#/$defs/WorkspaceInheritance"
+            }
+          ]
+        },
+        "extra-dependencies": {
+          "title": "Extra-Dependencies",
+          "description": "Optional dependency groups that can be requested through MatchSpec extras. Each group uses the same conda package specification syntax as run-dependencies.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "$ref": "#/$defs/MatchspecTable"
+                }
+              ]
+            },
+            "propertyNames": {
+              "minLength": 1
+            }
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "examples": [
+            {
+              "test": {
+                "hypothesis": "*",
+                "pytest": ">=8"
+              }
             }
           ]
         },

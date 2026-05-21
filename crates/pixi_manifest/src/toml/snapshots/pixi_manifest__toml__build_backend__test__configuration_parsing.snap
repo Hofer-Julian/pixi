@@ -101,6 +101,7 @@ TomlPackageBuild {
             },
         ),
     ),
+    flags: [],
     target: {},
     warnings: [
         Deprecation(

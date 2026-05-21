@@ -21,7 +21,10 @@ use rattler_conda_types::{GenericVirtualPackage, NoArchType, Platform, package::
 use rattler_virtual_packages::VirtualPackageOverrides;
 use url::Url;
 
-use crate::{source::Source, specs_conversion::convert_variant_from_pixi_build_types};
+use crate::{
+    source::Source, specs_conversion::convert_variant_from_pixi_build_types,
+    v3::recipe_source_uses_v3,
+};
 
 /// A `recipe.yaml` file might be accompanied by a `variants.toml` file from
 /// which we can read variant configuration for that specific recipe..
@@ -200,8 +203,13 @@ impl RattlerBuild {
             self.recipe_source.code.to_string(),
         );
 
+        let uses_v3 = recipe_source_uses_v3(&self.recipe_source.code);
+
         // Parse the recipe into a stage0 representation
-        let stage0_recipe = rattler_build_recipe::parse_recipe(&source)?;
+        let stage0_recipe = rattler_build_recipe::parse_recipe_with_config(
+            &source,
+            rattler_build_recipe::stage0::ParseConfig { v3: uses_v3 },
+        )?;
 
         // Check if there is a `variants.yaml` file next to the recipe that we should
         // potentially use.
@@ -235,6 +243,7 @@ impl RattlerBuild {
             .with_build_platform(self.build_platform)
             .with_host_platform(self.host_platform)
             .with_experimental(self.experimental)
+            .with_v3(uses_v3)
             .with_recipe_path(&self.recipe_source.path);
 
         // Render recipe with variant config
@@ -292,6 +301,7 @@ impl RattlerBuild {
         build_platform: Platform,
     ) -> miette::Result<Vec<Output>> {
         let mut outputs = Vec::new();
+        let uses_v3 = recipe_source_uses_v3(&self.recipe_source.code);
 
         let mut subpackages = BTreeMap::new();
 
@@ -373,7 +383,7 @@ impl RattlerBuild {
                     sandbox_config: None,
                     exclude_newer: None,
                     env_isolation: Default::default(),
-                    v3: false,
+                    v3: uses_v3,
                 },
                 finalized_dependencies: None,
                 finalized_cache_dependencies: None,

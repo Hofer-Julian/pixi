@@ -18,7 +18,9 @@ use rattler_conda_types::{
 };
 use url::Url;
 
-use crate::{generated_recipe::GeneratedRecipe, utils::TemporaryRenderedRecipe};
+use crate::{
+    generated_recipe::GeneratedRecipe, utils::TemporaryRenderedRecipe, v3::generated_recipe_uses_v3,
+};
 
 /// A very similar function to `get_build_output` from rattler-build.
 /// The difference is that in rattler-build, the function should load the recipe from a file.
@@ -50,8 +52,13 @@ pub async fn get_build_output(
         recipe_code.clone(),
     );
 
+    let uses_v3 = generated_recipe_uses_v3(&generated_recipe.recipe);
+
     // Parse the recipe into stage0
-    let stage0_recipe = rattler_build_recipe::parse_recipe(&source)?;
+    let stage0_recipe = rattler_build_recipe::parse_recipe_with_config(
+        &source,
+        rattler_build_recipe::stage0::ParseConfig { v3: uses_v3 },
+    )?;
 
     let variant_config = VariantConfig::default();
 
@@ -60,6 +67,7 @@ pub async fn get_build_output(
         .with_target_platform(target_platform)
         .with_build_platform(build_platform)
         .with_host_platform(host_platform)
+        .with_v3(uses_v3)
         .with_recipe_path(&recipe_path);
 
     // Render recipe with variant config
@@ -199,7 +207,7 @@ pub async fn get_build_output(
                 solve_strategy: Default::default(),
                 exclude_newer: None,
                 env_isolation: Default::default(),
-                v3: false,
+                v3: uses_v3,
             },
             finalized_dependencies: None,
             finalized_sources: None,

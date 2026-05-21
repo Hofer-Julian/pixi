@@ -11,7 +11,7 @@
 use ordermap::OrderMap;
 use pixi_stable_hash::{IsDefault, StableHashBuilder};
 use rattler_conda_types::{
-    BuildNumber, BuildNumberSpec, MatchSpecCondition, StringMatcher, Version, VersionSpec,
+    BuildNumber, BuildNumberSpec, Flag, MatchSpecCondition, StringMatcher, Version, VersionSpec,
 };
 use rattler_digest::{Md5, Md5Hash, Sha256, Sha256Hash, serde::SerializableHash};
 use serde::{Deserialize, Serialize};
@@ -43,6 +43,11 @@ pub struct ProjectModel {
     /// An optional project description
     pub description: Option<String>,
 
+    /// V3 package variant flags declared by the source package.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "schemars", schemars(with = "Option<Vec<String>>"))]
+    pub build_flags: Option<Vec<Flag>>,
+
     /// Optional authors
     pub authors: Option<Vec<String>>,
 
@@ -68,6 +73,16 @@ pub struct ProjectModel {
     /// platform specific configurations.
     pub targets: Option<Targets>,
 
+    /// Optional dependency groups declared by the source package.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(
+        feature = "schemars",
+        schemars(
+            with = "Option<std::collections::HashMap<String, std::collections::HashMap<String, PackageSpec>>>"
+        )
+    )]
+    pub extras: Option<ExtraDependencies>,
+
     /// Names of environment variables that should be exposed as secrets to
     /// the build script. Backends forward these into the generated
     /// `build.script.secrets` so rattler-build performs the host-env
@@ -84,6 +99,8 @@ impl IsDefault for ProjectModel {
         Some(self)
     }
 }
+
+pub type ExtraDependencies = OrderMap<String, OrderMap<SourcePackageName, PackageSpec>>;
 
 /// Represents a target selector. Currently, we only support explicit platform
 /// selection.
@@ -222,11 +239,23 @@ impl IsDefault for Target {
 #[serde(rename_all = "camelCase")]
 pub enum PackageSpec {
     /// This is a binary dependency
-    Binary(BinaryPackageSpec),
+    Binary(Box<BinaryPackageSpec>),
     /// This is a dependency on a source package
     Source(SourcePackageSpec),
     /// Pin to a version that is compatible with a version from the "previous" environment
     PinCompatible(PinCompatibleSpec),
+}
+
+impl From<BinaryPackageSpec> for PackageSpec {
+    fn from(value: BinaryPackageSpec) -> Self {
+        PackageSpec::Binary(Box::new(value))
+    }
+}
+
+impl From<VersionSpec> for PackageSpec {
+    fn from(value: VersionSpec) -> Self {
+        PackageSpec::Binary(Box::new(value.into()))
+    }
 }
 
 /// A package spec that can be used for constraints.
@@ -471,6 +500,12 @@ pub struct BinaryPackageSpec {
     pub build_number: Option<BuildNumberSpec>,
     /// Match the specific filename of the package
     pub file_name: Option<String>,
+    /// Optional extra dependencies to select for the package.
+    pub extras: Option<Vec<String>>,
+    /// Plain string flags used to select package variants.
+    #[serde_as(as = "Option<Vec<DisplayFromStr>>")]
+    #[cfg_attr(feature = "schemars", schemars(with = "Option<Vec<String>>"))]
+    pub flags: Option<Vec<StringMatcher>>,
     /// The channel of the package
     pub channel: Option<Url>,
     /// The subdir of the channel
@@ -487,9 +522,13 @@ pub struct BinaryPackageSpec {
     pub url: Option<Url>,
     /// The license of the package
     pub license: Option<String>,
+    /// The license family of the package
+    pub license_family: Option<String>,
     /// The condition under which this match spec applies.
     #[cfg_attr(feature = "schemars", schemars(with = "Option<serde_json::Value>"))]
     pub condition: Option<MatchSpecCondition>,
+    /// The track features of the package
+    pub track_features: Option<Vec<String>>,
 }
 
 impl From<VersionSpec> for BinaryPackageSpec {
@@ -526,6 +565,12 @@ impl std::fmt::Debug for BinaryPackageSpec {
         if let Some(file_name) = &self.file_name {
             debug_struct.field("file_name", file_name);
         }
+        if let Some(extras) = &self.extras {
+            debug_struct.field("extras", extras);
+        }
+        if let Some(flags) = &self.flags {
+            debug_struct.field("flags", flags);
+        }
         if let Some(channel) = &self.channel {
             debug_struct.field("channel", channel);
         }
@@ -538,8 +583,14 @@ impl std::fmt::Debug for BinaryPackageSpec {
         if let Some(sha256) = &self.sha256 {
             debug_struct.field("sha256", &format!("{sha256:x}"));
         }
+        if let Some(license_family) = &self.license_family {
+            debug_struct.field("license_family", license_family);
+        }
         if let Some(condition) = &self.condition {
             debug_struct.field("condition", condition);
+        }
+        if let Some(track_features) = &self.track_features {
+            debug_struct.field("track_features", track_features);
         }
 
         debug_struct.finish()
@@ -558,6 +609,7 @@ impl Hash for ProjectModel {
             build_number,
             version,
             description,
+            build_flags,
             authors,
             license,
             license_file,
@@ -566,6 +618,7 @@ impl Hash for ProjectModel {
             repository,
             documentation,
             targets,
+            extras,
             secrets,
         } = self;
 
@@ -573,8 +626,10 @@ impl Hash for ProjectModel {
             .field("authors", authors)
             .field("build_string_prefix", build_string_prefix)
             .field("build_number", build_number)
+            .field("build_flags", build_flags)
             .field("description", description)
             .field("documentation", documentation)
+            .field("extras", extras)
             .field("homepage", homepage)
             .field("license", license)
             .field("license_file", license_file)
@@ -850,12 +905,16 @@ impl Hash for BinaryPackageSpec {
             .field("build", &self.build)
             .field("build_number", &self.build_number)
             .field("channel", &self.channel)
-            .field("file_name", &self.file_name)
-            .field("license", &self.license)
             .field("condition", &condition)
+            .field("extras", &self.extras)
+            .field("file_name", &self.file_name)
+            .field("flags", &self.flags)
+            .field("license", &self.license)
+            .field("license_family", &self.license_family)
             .field("md5", &self.md5)
             .field("sha256", &self.sha256)
             .field("subdir", &self.subdir)
+            .field("track_features", &self.track_features)
             .field("url", &self.url)
             .field("version", &self.version)
             .finish(state);
@@ -883,6 +942,7 @@ mod tests {
             build_string_prefix: None,
             version: None,
             description: None,
+            build_flags: None,
             authors: None,
             license: None,
             license_file: None,
@@ -891,6 +951,7 @@ mod tests {
             repository: None,
             documentation: None,
             targets: None,
+            extras: None,
             secrets: std::collections::BTreeSet::new(),
         };
 
@@ -943,6 +1004,7 @@ mod tests {
             build_string_prefix: None,
             version: None,
             description: None,
+            build_flags: None,
             authors: None,
             license: None,
             license_file: None,
@@ -951,6 +1013,7 @@ mod tests {
             repository: None,
             documentation: None,
             targets: None,
+            extras: None,
             secrets: std::collections::BTreeSet::new(),
         };
 
@@ -964,7 +1027,7 @@ mod tests {
         let mut deps = OrderMap::new();
         deps.insert(
             SourcePackageName::from(rattler_conda_types::PackageName::new_unchecked("python")),
-            PackageSpec::Binary(BinaryPackageSpec::default()),
+            PackageSpec::from(BinaryPackageSpec::default()),
         );
 
         let target_with_deps = Target {
@@ -1008,7 +1071,7 @@ mod tests {
             sha256: None,
             url: None,
             license: None,
-            condition: None,
+            ..Default::default()
         };
         let hash2 = calculate_hash(&spec2);
 
@@ -1034,7 +1097,7 @@ mod tests {
     #[test]
     fn test_enum_variant_hash_stability() {
         // Test PackageSpecV1 enum variants
-        let binary_spec = PackageSpec::Binary(BinaryPackageSpec::default());
+        let binary_spec = PackageSpec::from(BinaryPackageSpec::default());
         let source_spec = PackageSpec::Source(SourcePackageSpec::from(PathSpec {
             path: "test".to_string(),
         }));
@@ -1049,7 +1112,7 @@ mod tests {
         );
 
         // Same variant with same content should have same hash
-        let binary_spec2 = PackageSpec::Binary(BinaryPackageSpec::default());
+        let binary_spec2 = PackageSpec::from(BinaryPackageSpec::default());
         let hash3 = calculate_hash(&binary_spec2);
 
         assert_eq!(
@@ -1064,25 +1127,25 @@ mod tests {
                 SourcePackageName::from(rattler_conda_types::PackageName::new_unchecked(
                     "host_dep1",
                 )),
-                PackageSpec::Binary(BinaryPackageSpec::default()),
+                PackageSpec::from(BinaryPackageSpec::default()),
             )])),
             build_dependencies: Some(OrderMap::from([(
                 SourcePackageName::from(rattler_conda_types::PackageName::new_unchecked(
                     "build_dep1",
                 )),
-                PackageSpec::Binary(BinaryPackageSpec::default()),
+                PackageSpec::from(BinaryPackageSpec::default()),
             )])),
             run_dependencies: Some(OrderMap::from([(
                 SourcePackageName::from(rattler_conda_types::PackageName::new_unchecked(
                     "run_dep1",
                 )),
-                PackageSpec::Binary(BinaryPackageSpec::default()),
+                PackageSpec::from(BinaryPackageSpec::default()),
             )])),
             run_constraints: Some(OrderMap::from([(
                 SourcePackageName::from(rattler_conda_types::PackageName::new_unchecked(
                     "run_const1",
                 )),
-                PackageSpec::Binary(BinaryPackageSpec::default()),
+                PackageSpec::Binary(Box::new(BinaryPackageSpec::default())),
             )])),
         }
     }
@@ -1193,7 +1256,7 @@ mod tests {
         let mut deps = OrderMap::new();
         deps.insert(
             SourcePackageName::from(rattler_conda_types::PackageName::new_unchecked("python")),
-            PackageSpec::Binary(BinaryPackageSpec::default()),
+            PackageSpec::Binary(Box::new(BinaryPackageSpec::default())),
         );
 
         let target = Target {
@@ -1221,7 +1284,7 @@ mod tests {
         let mut deps = OrderMap::new();
         deps.insert(
             SourcePackageName::from(rattler_conda_types::PackageName::new_unchecked("python")),
-            PackageSpec::Binary(BinaryPackageSpec::default()),
+            PackageSpec::from(BinaryPackageSpec::default()),
         );
 
         // Same dependency in host_dependencies

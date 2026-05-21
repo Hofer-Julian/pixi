@@ -102,6 +102,11 @@ When using something like `zlib`, you would only need to specify it in the `host
 These are the dependencies that are required to when running the package, they are the most common dependencies.
 And are what you would usually use in a `workspace`.
 
+### [Extra Dependencies](../reference/pixi_manifest.md#extra-dependencies)
+
+Package manifests can define optional run dependency groups in `package.extra-dependencies`.
+They use the same conda package specification syntax as run dependencies and are requested through MatchSpec extras.
+
 ### [Run Constraints](../reference/pixi_manifest.md#run-constraints)
 
 Constraints that apply to the package's run environment, but only when the constrained package is pulled in as a dependency by something else.

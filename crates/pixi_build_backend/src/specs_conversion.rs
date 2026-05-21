@@ -1,10 +1,10 @@
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 use minijinja::Value;
 use ordermap::OrderMap;
 use pixi_build_types::{
-    BinaryPackageSpec, PackageSpec, SourcePackageName, SourcePackageSpec, Target, TargetSelector,
-    Targets,
+    BinaryPackageSpec, ExtraDependencies, PackageSpec, SourcePackageName, SourcePackageSpec,
+    Target, TargetSelector, Targets,
     procedures::conda_build_v1::{
         CondaBuildV1Dependency, CondaBuildV1DependencySource, CondaBuildV1Prefix,
         CondaBuildV1RunExports,
@@ -196,6 +196,22 @@ pub fn from_targets_v1_to_conditional_requirements(targets: &Targets) -> Require
     }
 }
 
+pub fn from_extras_v1_to_conditional_requirements(
+    extras: ExtraDependencies,
+) -> BTreeMap<String, ConditionalList<SerializableMatchSpec>> {
+    extras
+        .into_iter()
+        .map(|(name, deps)| {
+            let items = package_specs_to_package_dependency(deps)
+                .unwrap()
+                .into_iter()
+                .map(package_dependency_to_item)
+                .collect();
+            (name, ConditionalList::new(items))
+        })
+        .collect()
+}
+
 pub(crate) fn source_package_spec_to_package_dependency(
     name: PackageName,
     source_spec: SourcePackageSpec,
@@ -220,13 +236,17 @@ fn binary_package_spec_to_package_dependency(
         build,
         build_number,
         file_name,
+        extras,
+        flags,
         channel,
         subdir,
         md5,
         sha256,
         url,
         license,
+        license_family,
         condition,
+        track_features,
     } = binary_spec;
 
     // If the version is "*" and no other constraints are present, treat it as None
@@ -262,7 +282,7 @@ fn binary_package_spec_to_package_dependency(
         build,
         build_number,
         file_name,
-        extras: None,
+        extras,
         channel: channel.map(Channel::from_url).map(Arc::new),
         subdir,
         namespace: None,
@@ -271,9 +291,9 @@ fn binary_package_spec_to_package_dependency(
         url,
         license,
         condition,
-        track_features: None,
-        flags: None,
-        license_family: None,
+        track_features,
+        flags,
+        license_family,
     })
 }
 
@@ -282,9 +302,10 @@ fn package_spec_to_package_dependency(
     spec: PackageSpec,
 ) -> miette::Result<PackageDependency> {
     match spec {
-        PackageSpec::Binary(binary_spec) => {
-            Ok(binary_package_spec_to_package_dependency(name, binary_spec))
-        }
+        PackageSpec::Binary(binary_spec) => Ok(binary_package_spec_to_package_dependency(
+            name,
+            *binary_spec,
+        )),
         PackageSpec::Source(source_spec) => Ok(PackageDependency::Source(
             source_package_spec_to_package_dependency(name, source_spec)?,
         )),
@@ -460,10 +481,10 @@ pub fn from_build_v1_args_to_finalized_dependencies(
                 .into_iter()
                 .map(from_build_v1_dependency_to_dependency_info)
                 .collect(),
+            extra_depends: Default::default(),
             run_exports: run_exports
                 .map(from_build_v1_run_exports_to_run_exports)
                 .unwrap_or_default(),
-            extra_depends: Default::default(),
         },
     }
 }
@@ -518,6 +539,32 @@ mod test {
         assert_eq!(match_spec.condition, Some(condition));
     }
 
+    #[test]
+    fn test_extras_conversion() {
+        let mut dependencies = OrderMap::new();
+        dependencies.insert(
+            SourcePackageName::from(PackageName::new_unchecked("gtest")),
+            BinaryPackageSpec {
+                version: Some("*".parse().unwrap()),
+                ..BinaryPackageSpec::default()
+            }
+            .into(),
+        );
+
+        let mut extras = ExtraDependencies::new();
+        extras.insert("test".to_string(), dependencies);
+
+        let extras = from_extras_v1_to_conditional_requirements(extras);
+        let value = serde_json::to_value(&extras).unwrap();
+
+        assert_eq!(
+            value,
+            serde_json::json!({
+                "test": ["gtest"]
+            })
+        );
+    }
+
     /// Regression test for <https://github.com/prefix-dev/pixi/issues/4526>:
     /// `version = "*"` combined with a `build` constraint must preserve both
     /// fields so the resulting `MatchSpec` round-trips correctly through its
@@ -554,10 +601,11 @@ mod test {
         let mut constraints = OrderMap::new();
         constraints.insert(
             SourcePackageName::from(PackageName::new_unchecked(name)),
-            PackageSpec::Binary(BinaryPackageSpec {
+            BinaryPackageSpec {
                 version: Some(version.parse().unwrap()),
                 ..BinaryPackageSpec::default()
-            }),
+            }
+            .into(),
         );
         Target {
             host_dependencies: None,
