@@ -196,7 +196,7 @@
           }
         },
         "extras": {
-          "description": "Optional dependency groups (`extras`) declared by the source package\nfor this target. A top-level `[package.extra-dependencies.<group>]`\nlands on the default target's extras; per-target groups are declared\nas `[package.target.<sel>.extra-dependencies.<group>]`.",
+          "description": "Optional dependency groups declared by the source package for this target.",
           "type": [
             "object",
             "null"

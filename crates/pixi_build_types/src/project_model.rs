@@ -1153,7 +1153,7 @@ mod tests {
                 SourcePackageName::from(rattler_conda_types::PackageName::new_unchecked(
                     "run_const1",
                 )),
-                PackageSpec::Binary(Box::new(BinaryPackageSpec::default())),
+                PackageSpec::Binary(Box::default()),
             )])),
             extras: None,
         }
@@ -1265,7 +1265,7 @@ mod tests {
         let mut deps = OrderMap::new();
         deps.insert(
             SourcePackageName::from(rattler_conda_types::PackageName::new_unchecked("python")),
-            PackageSpec::Binary(Box::new(BinaryPackageSpec::default())),
+            PackageSpec::Binary(Box::default()),
         );
 
         let target = Target {
