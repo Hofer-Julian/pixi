@@ -1320,6 +1320,38 @@
             "minLength": 1
           }
         },
+        "extra-dependencies": {
+          "title": "Extra-Dependencies",
+          "description": "Optional dependency groups for this target. Same shape as the top-level `extra-dependencies`, but scoped to the matching platform selector.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "$ref": "#/$defs/MatchspecTable"
+                }
+              ]
+            },
+            "propertyNames": {
+              "minLength": 1
+            }
+          },
+          "propertyNames": {
+            "minLength": 1
+          },
+          "examples": [
+            {
+              "test": {
+                "pytest": ">=8"
+              }
+            }
+          ]
+        },
         "host-dependencies": {
           "title": "Host-Dependencies",
           "description": "The host `conda` dependencies, used in the build process. See https://pixi.sh/latest/build/dependency_types/ for more information.",

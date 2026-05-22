@@ -73,16 +73,6 @@ pub struct ProjectModel {
     /// platform specific configurations.
     pub targets: Option<Targets>,
 
-    /// Optional dependency groups declared by the source package.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(
-        feature = "schemars",
-        schemars(
-            with = "Option<std::collections::HashMap<String, std::collections::HashMap<String, PackageSpec>>>"
-        )
-    )]
-    pub extras: Option<ExtraDependencies>,
-
     /// Names of environment variables that should be exposed as secrets to
     /// the build script. Backends forward these into the generated
     /// `build.script.secrets` so rattler-build performs the host-env
@@ -208,6 +198,19 @@ pub struct Target {
         schemars(with = "Option<std::collections::HashMap<String, PackageSpec>>")
     )]
     pub run_constraints: Option<OrderMap<SourcePackageName, PackageSpec>>,
+
+    /// Optional dependency groups (`extras`) declared by the source package
+    /// for this target. A top-level `[package.extra-dependencies.<group>]`
+    /// lands on the default target's extras; per-target groups are declared
+    /// as `[package.target.<sel>.extra-dependencies.<group>]`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(
+        feature = "schemars",
+        schemars(
+            with = "Option<std::collections::HashMap<String, std::collections::HashMap<String, PackageSpec>>>"
+        )
+    )]
+    pub extras: Option<ExtraDependencies>,
 }
 
 impl Target {
@@ -221,8 +224,16 @@ impl Target {
         let has_no_host_deps = self.host_dependencies.as_ref().is_none_or(|d| d.is_empty());
         let has_no_run_deps = self.run_dependencies.as_ref().is_none_or(|d| d.is_empty());
         let has_no_run_constraints = self.run_constraints.as_ref().is_none_or(|d| d.is_empty());
+        let has_no_extras = self
+            .extras
+            .as_ref()
+            .is_none_or(|e| e.is_empty() || e.values().all(|deps| deps.is_empty()));
 
-        has_no_build_deps && has_no_host_deps && has_no_run_deps && has_no_run_constraints
+        has_no_build_deps
+            && has_no_host_deps
+            && has_no_run_deps
+            && has_no_run_constraints
+            && has_no_extras
     }
 }
 
@@ -618,7 +629,6 @@ impl Hash for ProjectModel {
             repository,
             documentation,
             targets,
-            extras,
             secrets,
         } = self;
 
@@ -629,7 +639,6 @@ impl Hash for ProjectModel {
             .field("build_flags", build_flags)
             .field("description", description)
             .field("documentation", documentation)
-            .field("extras", extras)
             .field("homepage", homepage)
             .field("license", license)
             .field("license_file", license_file)
@@ -687,10 +696,12 @@ impl Hash for Target {
             host_dependencies,
             run_dependencies,
             run_constraints,
+            extras,
         } = self;
 
         StableHashBuilder::<H>::new()
             .field("build_dependencies", build_dependencies)
+            .field("extras", extras)
             .field("host_dependencies", host_dependencies)
             .field("run_dependencies", run_dependencies)
             .field("run_constraints", run_constraints)
@@ -951,7 +962,6 @@ mod tests {
             repository: None,
             documentation: None,
             targets: None,
-            extras: None,
             secrets: std::collections::BTreeSet::new(),
         };
 
@@ -972,6 +982,7 @@ mod tests {
             build_dependencies: Some(OrderMap::new()),
             run_dependencies: Some(OrderMap::new()),
             run_constraints: Some(OrderMap::new()),
+            extras: None,
         };
         project_model.targets = Some(Targets {
             default_target: Some(empty_target),
@@ -1013,7 +1024,6 @@ mod tests {
             repository: None,
             documentation: None,
             targets: None,
-            extras: None,
             secrets: std::collections::BTreeSet::new(),
         };
 
@@ -1035,6 +1045,7 @@ mod tests {
             build_dependencies: Some(OrderMap::new()),
             run_dependencies: Some(OrderMap::new()),
             run_constraints: Some(OrderMap::new()),
+            extras: None,
         };
         project_model.targets = Some(Targets {
             default_target: Some(target_with_deps),
@@ -1147,6 +1158,7 @@ mod tests {
                 )),
                 PackageSpec::Binary(Box::new(BinaryPackageSpec::default())),
             )])),
+            extras: None,
         }
     }
 
@@ -1264,6 +1276,7 @@ mod tests {
             build_dependencies: None,
             run_dependencies: None,
             run_constraints: Some(deps),
+            extras: None,
         };
         assert!(!target.is_empty());
 
@@ -1272,6 +1285,7 @@ mod tests {
             build_dependencies: None,
             run_dependencies: None,
             run_constraints: None,
+            extras: None,
         };
         assert!(empty.is_empty());
     }
@@ -1293,6 +1307,7 @@ mod tests {
             build_dependencies: None,
             run_dependencies: None,
             run_constraints: None,
+            extras: None,
         };
 
         // Same dependency in run_dependencies
@@ -1301,6 +1316,7 @@ mod tests {
             build_dependencies: None,
             run_dependencies: Some(deps.clone()),
             run_constraints: None,
+            extras: None,
         };
 
         // Same dependency in build_dependencies
@@ -1309,6 +1325,7 @@ mod tests {
             build_dependencies: Some(deps.clone()),
             run_dependencies: None,
             run_constraints: None,
+            extras: None,
         };
         // Same dependency in run_constraints
         let target4 = Target {
@@ -1316,6 +1333,7 @@ mod tests {
             build_dependencies: None,
             run_dependencies: None,
             run_constraints: Some(deps.clone()),
+            extras: None,
         };
 
         let hash1 = calculate_hash(&target1);

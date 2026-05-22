@@ -9,10 +9,6 @@ pub fn project_model_uses_v3(model: &ProjectModel) -> bool {
         .build_flags
         .as_ref()
         .is_some_and(|flags| !flags.is_empty())
-        || model
-            .extras
-            .as_ref()
-            .is_some_and(|extras| !extras.is_empty())
         || model.targets.as_ref().is_some_and(targets_use_v3)
 }
 
@@ -41,6 +37,10 @@ fn target_uses_v3(target: &Target) -> bool {
             .run_constraints
             .as_ref()
             .is_some_and(|deps| deps.values().any(package_spec_uses_v3))
+        || target
+            .extras
+            .as_ref()
+            .is_some_and(|extras| !extras.is_empty())
 }
 
 fn package_spec_uses_v3(spec: &PackageSpec) -> bool {

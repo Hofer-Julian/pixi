@@ -3,8 +3,8 @@ use std::{collections::BTreeMap, sync::Arc};
 use minijinja::Value;
 use ordermap::OrderMap;
 use pixi_build_types::{
-    BinaryPackageSpec, ExtraDependencies, PackageSpec, SourcePackageName, SourcePackageSpec,
-    Target, TargetSelector, Targets,
+    BinaryPackageSpec, PackageSpec, SourcePackageName, SourcePackageSpec, Target, TargetSelector,
+    Targets,
     procedures::conda_build_v1::{
         CondaBuildV1Dependency, CondaBuildV1DependencySource, CondaBuildV1Prefix,
         CondaBuildV1RunExports,
@@ -101,6 +101,7 @@ pub fn from_targets_v1_to_conditional_requirements(targets: &Targets) -> Require
     let mut host_items = ConditionalList::default();
     let mut run_items = ConditionalList::default();
     let mut run_constraints_items = ConditionalList::default();
+    let mut extras: BTreeMap<String, ConditionalList<SerializableMatchSpec>> = BTreeMap::new();
 
     // Add default target
     if let Some(default_target) = &targets.default_target {
@@ -136,7 +137,17 @@ pub fn from_targets_v1_to_conditional_requirements(targets: &Targets) -> Require
                 .into_iter()
                 .map(|spec| spec.1)
                 .map(package_dependency_to_item),
-        )
+        );
+
+        if let Some(default_extras) = &default_target.extras {
+            for (group, deps) in default_extras {
+                let items = package_specs_to_package_dependency(deps.clone())
+                    .unwrap()
+                    .into_iter()
+                    .map(package_dependency_to_item);
+                extras.entry(group.clone()).or_default().extend(items);
+            }
+        }
     }
 
     // Add specific targets
@@ -184,6 +195,16 @@ pub fn from_targets_v1_to_conditional_requirements(targets: &Targets) -> Require
                     .map(|spec| spec.1)
                     .map(make_conditional),
             );
+
+            if let Some(target_extras) = &target.extras {
+                for (group, deps) in target_extras {
+                    let items = package_specs_to_package_dependency(deps.clone())
+                        .unwrap()
+                        .into_iter()
+                        .map(&make_conditional);
+                    extras.entry(group.clone()).or_default().extend(items);
+                }
+            }
         }
     }
 
@@ -192,24 +213,9 @@ pub fn from_targets_v1_to_conditional_requirements(targets: &Targets) -> Require
         host: host_items,
         run: run_items,
         run_constraints: run_constraints_items,
+        extras,
         ..Default::default()
     }
-}
-
-pub fn from_extras_v1_to_conditional_requirements(
-    extras: ExtraDependencies,
-) -> BTreeMap<String, ConditionalList<SerializableMatchSpec>> {
-    extras
-        .into_iter()
-        .map(|(name, deps)| {
-            let items = package_specs_to_package_dependency(deps)
-                .unwrap()
-                .into_iter()
-                .map(package_dependency_to_item)
-                .collect();
-            (name, ConditionalList::new(items))
-        })
-        .collect()
 }
 
 pub(crate) fn source_package_spec_to_package_dependency(
@@ -492,6 +498,7 @@ pub fn from_build_v1_args_to_finalized_dependencies(
 #[cfg(test)]
 mod test {
     use super::*;
+    use pixi_build_types::ExtraDependencies;
 
     #[test]
     fn test_binary_package_conversion() {
@@ -541,6 +548,10 @@ mod test {
 
     #[test]
     fn test_extras_conversion() {
+        // Top-level `[package.extra-dependencies.test]` lands on the default
+        // target's extras, which should round-trip through
+        // `from_targets_v1_to_conditional_requirements` as a bare
+        // `gtest` value in the `test` group.
         let mut dependencies = OrderMap::new();
         dependencies.insert(
             SourcePackageName::from(PackageName::new_unchecked("gtest")),
@@ -554,14 +565,66 @@ mod test {
         let mut extras = ExtraDependencies::new();
         extras.insert("test".to_string(), dependencies);
 
-        let extras = from_extras_v1_to_conditional_requirements(extras);
-        let value = serde_json::to_value(&extras).unwrap();
+        let targets = Targets {
+            default_target: Some(Target {
+                extras: Some(extras),
+                ..Target::default()
+            }),
+            targets: None,
+        };
+        let requirements = from_targets_v1_to_conditional_requirements(&targets);
+        let value = serde_json::to_value(&requirements.extras).unwrap();
 
         assert_eq!(
             value,
             serde_json::json!({
                 "test": ["gtest"]
             })
+        );
+    }
+
+    /// Per-target extras must be wrapped in a `Conditional` so the resulting
+    /// recipe only pulls them in for the matching platform selector.
+    #[test]
+    fn test_per_target_extras_conversion() {
+        let mut dependencies = OrderMap::new();
+        dependencies.insert(
+            SourcePackageName::from(PackageName::new_unchecked("gtest")),
+            BinaryPackageSpec {
+                version: Some("*".parse().unwrap()),
+                ..BinaryPackageSpec::default()
+            }
+            .into(),
+        );
+
+        let mut extras = ExtraDependencies::new();
+        extras.insert("test".to_string(), dependencies);
+
+        let mut platform_targets = OrderMap::new();
+        platform_targets.insert(
+            TargetSelector::Win,
+            Target {
+                extras: Some(extras),
+                ..Target::default()
+            },
+        );
+        let targets = Targets {
+            default_target: None,
+            targets: Some(platform_targets),
+        };
+
+        let requirements = from_targets_v1_to_conditional_requirements(&targets);
+        let test_group = requirements
+            .extras
+            .get("test")
+            .expect("test group is present");
+        let first = test_group
+            .iter()
+            .next()
+            .expect("group has at least one item");
+        assert!(
+            matches!(first, Item::Conditional(_)),
+            "per-target extras must be wrapped in a Conditional, got: {first:?}",
         );
     }
 
@@ -612,6 +675,7 @@ mod test {
             build_dependencies: None,
             run_dependencies: None,
             run_constraints: Some(constraints),
+            extras: None,
         }
     }
 

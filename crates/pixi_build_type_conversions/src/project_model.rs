@@ -154,6 +154,20 @@ fn to_target_v1(
 ) -> Result<pbt::Target, SpecConversionError> {
     // Difference for us is that [`pbt::TargetV1`] has split the host, run and build
     // dependencies into separate fields, so we need to split them up here
+    let extras = if target.extras.is_empty() {
+        None
+    } else {
+        Some(
+            target
+                .extras
+                .iter()
+                .map(|(name, deps)| {
+                    to_pbt_dependencies(deps.iter_specs(), channel_config)
+                        .map(|dependencies| (name.clone(), dependencies))
+                })
+                .collect::<Result<_, _>>()?,
+        )
+    };
     Ok(pbt::Target {
         host_dependencies: Some(
             target
@@ -183,6 +197,7 @@ fn to_target_v1(
                 .transpose()?
                 .unwrap_or_default(),
         ),
+        extras,
     })
 }
 
@@ -216,25 +231,6 @@ fn to_targets_v1(
     })
 }
 
-fn to_extras_v1(
-    manifest: &PackageManifest,
-    channel_config: &ChannelConfig,
-) -> Result<Option<pbt::ExtraDependencies>, SpecConversionError> {
-    if manifest.extras.is_empty() {
-        return Ok(None);
-    }
-
-    manifest
-        .extras
-        .iter()
-        .map(|(name, deps)| {
-            to_pbt_dependencies(deps.iter_specs(), channel_config)
-                .map(|dependencies| (name.clone(), dependencies))
-        })
-        .collect::<Result<_, _>>()
-        .map(Some)
-}
-
 /// Converts a [`PackageManifest`] to a [`pbt::ProjectModel`].
 pub fn to_project_model_v1(
     manifest: &PackageManifest,
@@ -255,7 +251,6 @@ pub fn to_project_model_v1(
         repository: manifest.package.repository.clone(),
         documentation: manifest.package.documentation.clone(),
         targets: Some(to_targets_v1(&manifest.targets, channel_config)?),
-        extras: to_extras_v1(manifest, channel_config)?,
         secrets: manifest.build.secrets.clone(),
     };
     Ok(project)
@@ -355,7 +350,13 @@ mod tests {
             .value;
 
         let project_model = super::to_project_model_v1(&manifest, &some_channel_config()).unwrap();
-        let extras = project_model.extras.expect("extras are forwarded");
+        let extras = project_model
+            .targets
+            .expect("targets are forwarded")
+            .default_target
+            .expect("default target is forwarded")
+            .extras
+            .expect("extras are forwarded");
         let test_extra = extras.get("test").expect("test extra exists");
 
         assert!(test_extra.keys().any(|name| name.as_str() == "gtest"));

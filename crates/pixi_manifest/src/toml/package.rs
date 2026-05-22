@@ -9,9 +9,7 @@ use toml_span::{DeserError, Span, Spanned, Value, de_helpers::TableHelper};
 use url::Url;
 
 use crate::{
-    KnownPreviewFeature, PackageManifest, Preview, TargetSelector, Targets, TomlError,
-    WithWarnings,
-    dependencies::CondaDependencies,
+    PackageManifest, Preview, TargetSelector, Targets, TomlError, WithWarnings,
     error::GenericError,
     package::Package,
     toml::{
@@ -349,24 +347,9 @@ impl TomlPackage {
             run_constraints: self.run_constraints,
             host_dependencies: self.host_dependencies,
             build_dependencies: self.build_dependencies,
+            extra_dependencies: self.extra_dependencies,
         }
         .into_package_target(preview)?;
-
-        let extras = self
-            .extra_dependencies
-            .into_iter()
-            .map(|(name, dependencies)| {
-                let dependencies = dependencies
-                    .value
-                    .into_inner(preview.is_enabled(KnownPreviewFeature::PixiBuild))
-                    .map(|index_map| {
-                        let dep_map: CondaDependencies = index_map.into_iter().collect();
-                        dep_map
-                    })?;
-
-                Ok::<_, TomlError>((name.value, dependencies))
-            })
-            .collect::<Result<_, _>>()?;
 
         let targets = self
             .target
@@ -507,7 +490,6 @@ impl TomlPackage {
             },
             build: build_result.value,
             targets: Targets::from_default_and_user_defined(default_package_target, targets),
-            extras,
         })
         .with_warnings(warnings))
     }
@@ -699,12 +681,56 @@ mod test {
             .unwrap()
             .value;
 
-        let test_extra = manifest.extras.get("test").expect("test extra exists");
+        let test_extra = manifest
+            .targets
+            .default()
+            .extras
+            .get("test")
+            .expect("test extra exists");
         let names = test_extra
             .names()
             .map(|name| name.as_normalized())
             .collect::<Vec<_>>();
         assert_eq!(names, vec!["gtest", "pytest"]);
+    }
+
+    #[test]
+    fn test_package_target_extras_dependencies() {
+        // Per-target extras should land on the matching package target rather
+        // than on the default target.
+        let input = r#"
+        name = "bla"
+        version = "1.0"
+
+        [build]
+        backend = { name = "bla", version = "1.0" }
+
+        [target.win.extra-dependencies.test]
+        gtest = "*"
+
+        [target.win.extra-dependencies.bench]
+        criterion = "*"
+        "#;
+
+        let package = TomlPackage::from_toml_str(input).unwrap();
+        let manifest = package
+            .into_manifest(
+                WorkspacePackageProperties::default(),
+                PackageDefaults::default(),
+                &Preview::default(),
+                Path::new(""),
+            )
+            .unwrap()
+            .value;
+
+        let win_target = manifest
+            .targets
+            .for_target(&TargetSelector::Win)
+            .expect("win target exists");
+        assert!(win_target.extras.contains_key("test"));
+        assert!(win_target.extras.contains_key("bench"));
+        // Default target should NOT have the per-target extras.
+        assert!(manifest.targets.default().extras.is_empty());
     }
 
     #[test]

@@ -133,7 +133,6 @@ pub(crate) fn convert_test_model_to_project_model_v1(test_model: TestProjectMode
             .documentation
             .and_then(|d| url::Url::parse(&d).ok()),
         targets: Some(targets_v1),
-        extras: None,
         build_number: None,
         build_string_prefix: None,
         secrets: std::collections::BTreeSet::new(),
@@ -187,6 +186,7 @@ fn convert_target_to_v1(target: &Target) -> PbtTarget {
                 })
                 .collect(),
         ),
+        extras: None,
     }
 }
 

@@ -1013,6 +1013,11 @@ class PackageTarget(StrictBaseModel):
     run_constraints: Dependencies = RunConstraintsField
     host_dependencies: Dependencies = HostDependenciesField
     build_dependencies: Dependencies = BuildDependenciesField
+    extra_dependencies: ExtraDependencies = Field(
+        None,
+        description="Optional dependency groups for this target. Same shape as the top-level `extra-dependencies`, but scoped to the matching platform selector.",
+        examples=[{"test": {"pytest": ">=8"}}],
+    )
 
 
 #######################

@@ -1,3 +1,5 @@
+use indexmap::IndexMap;
+use pixi_toml::{Same, TomlIndexMap, TomlWith};
 use toml_span::{DeserError, Value, de_helpers::TableHelper};
 
 use crate::{
@@ -7,12 +9,13 @@ use crate::{
     utils::{PixiSpanned, package_map::UniquePackageMap},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct TomlPackageTarget {
     pub run_dependencies: Option<PixiSpanned<UniquePackageMap>>,
     pub run_constraints: Option<PixiSpanned<UniquePackageMap>>,
     pub host_dependencies: Option<PixiSpanned<UniquePackageMap>>,
     pub build_dependencies: Option<PixiSpanned<UniquePackageMap>>,
+    pub extra_dependencies: IndexMap<PixiSpanned<String>, PixiSpanned<UniquePackageMap>>,
 }
 
 impl<'de> toml_span::Deserialize<'de> for TomlPackageTarget {
@@ -22,18 +25,35 @@ impl<'de> toml_span::Deserialize<'de> for TomlPackageTarget {
         let run_constraints = th.optional("run-constraints");
         let host_dependencies = th.optional("host-dependencies");
         let build_dependencies = th.optional("build-dependencies");
+        let extra_dependencies = th
+            .optional::<TomlWith<_, TomlIndexMap<_, Same>>>("extra-dependencies")
+            .map(TomlWith::into_inner)
+            .unwrap_or_default();
         th.finalize(None)?;
         Ok(TomlPackageTarget {
             run_dependencies,
             run_constraints,
             host_dependencies,
             build_dependencies,
+            extra_dependencies,
         })
     }
 }
 
 impl TomlPackageTarget {
     pub fn into_package_target(self, preview: &Preview) -> Result<PackageTarget, TomlError> {
+        let pixi_build_enabled = preview.is_enabled(KnownPreviewFeature::PixiBuild);
+        let extras = self
+            .extra_dependencies
+            .into_iter()
+            .map(|(name, dependencies)| {
+                let dependencies = dependencies
+                    .value
+                    .into_inner(pixi_build_enabled)
+                    .map(|index_map| index_map.into_iter().collect())?;
+                Ok::<_, TomlError>((name.value, dependencies))
+            })
+            .collect::<Result<_, _>>()?;
         Ok(PackageTarget {
             dependencies: combine_target_dependencies(
                 [
@@ -42,8 +62,9 @@ impl TomlPackageTarget {
                     (SpecType::Build, self.build_dependencies),
                     (SpecType::RunConstraints, self.run_constraints),
                 ],
-                preview.is_enabled(KnownPreviewFeature::PixiBuild),
+                pixi_build_enabled,
             )?,
+            extras,
         })
     }
 }

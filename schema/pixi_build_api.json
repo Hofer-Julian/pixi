@@ -116,19 +116,6 @@
         }
       ]
     },
-    "extras": {
-      "description": "Optional dependency groups declared by the source package.",
-      "type": [
-        "object",
-        "null"
-      ],
-      "additionalProperties": {
-        "type": "object",
-        "additionalProperties": {
-          "$ref": "#/$defs/PackageSpec"
-        }
-      }
-    },
     "secrets": {
       "description": "Names of environment variables that should be exposed as secrets to\nthe build script. Backends forward these into the generated\n`build.script.secrets` so rattler-build performs the host-env\npassthrough at build time. Stored as a set: order is not observable\nand changing it should not invalidate caches.",
       "type": "array",
@@ -206,6 +193,19 @@
           ],
           "additionalProperties": {
             "$ref": "#/$defs/PackageSpec"
+          }
+        },
+        "extras": {
+          "description": "Optional dependency groups (`extras`) declared by the source package\nfor this target. A top-level `[package.extra-dependencies.<group>]`\nlands on the default target's extras; per-target groups are declared\nas `[package.target.<sel>.extra-dependencies.<group>]`.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/$defs/PackageSpec"
+            }
           }
         }
       }

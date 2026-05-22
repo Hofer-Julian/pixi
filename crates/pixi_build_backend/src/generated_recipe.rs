@@ -16,9 +16,7 @@ use serde::de::DeserializeOwned;
 use thiserror::Error;
 use url::Url;
 
-use crate::specs_conversion::{
-    from_extras_v1_to_conditional_requirements, from_targets_v1_to_conditional_requirements,
-};
+use crate::specs_conversion::from_targets_v1_to_conditional_requirements;
 use crate::v3::project_model_uses_v3;
 
 #[derive(Debug, Clone, Default)]
@@ -218,12 +216,8 @@ impl GeneratedRecipe {
             Value::new_concrete(version_with_source, None),
         );
 
-        let mut requirements =
+        let requirements =
             from_targets_v1_to_conditional_requirements(&model.targets.unwrap_or_default());
-        requirements.extras = model
-            .extras
-            .map(from_extras_v1_to_conditional_requirements)
-            .unwrap_or_default();
 
         macro_rules! derive_value {
             ($ident:ident) => {
@@ -348,13 +342,14 @@ impl MetadataProvider for DefaultMetadataProvider {
 #[cfg(test)]
 mod tests {
     use ordermap::OrderMap;
-    use pixi_build_types::{BinaryPackageSpec, ExtraDependencies, SourcePackageName};
+    use pixi_build_types::{
+        BinaryPackageSpec, ExtraDependencies, SourcePackageName, Target, TargetSelector, Targets,
+    };
     use rattler_conda_types::{Flag, PackageName};
 
     use super::*;
 
-    #[test]
-    fn generated_recipe_declares_package_extras() {
+    fn extras_with_gtest() -> ExtraDependencies {
         let mut dependencies = OrderMap::new();
         dependencies.insert(
             SourcePackageName::from(PackageName::new_unchecked("gtest")),
@@ -364,14 +359,23 @@ mod tests {
             }
             .into(),
         );
-
         let mut extras = ExtraDependencies::new();
         extras.insert("test".to_string(), dependencies);
+        extras
+    }
 
+    #[test]
+    fn generated_recipe_declares_package_extras() {
         let model = ProjectModel {
             name: Some("example".to_string()),
             version: Some("0.1.0".parse().unwrap()),
-            extras: Some(extras),
+            targets: Some(Targets {
+                default_target: Some(Target {
+                    extras: Some(extras_with_gtest()),
+                    ..Target::default()
+                }),
+                targets: None,
+            }),
             ..ProjectModel::default()
         };
 
@@ -385,6 +389,47 @@ mod tests {
                 "test": ["gtest"]
             })
         );
+    }
+
+    /// Per-target extras must be wrapped in a `Conditional` block in the
+    /// generated recipe rather than landing as a bare entry.
+    #[test]
+    fn generated_recipe_declares_per_target_extras() {
+        let mut platform_targets = OrderMap::new();
+        platform_targets.insert(
+            TargetSelector::Win,
+            Target {
+                extras: Some(extras_with_gtest()),
+                ..Target::default()
+            },
+        );
+
+        let model = ProjectModel {
+            name: Some("example".to_string()),
+            version: Some("0.1.0".parse().unwrap()),
+            targets: Some(Targets {
+                default_target: None,
+                targets: Some(platform_targets),
+            }),
+            ..ProjectModel::default()
+        };
+
+        let generated = GeneratedRecipe::from_model(model, &mut DefaultMetadataProvider).unwrap();
+        let test_group = generated
+            .recipe
+            .requirements
+            .extras
+            .get("test")
+            .expect("test group present");
+        let first = test_group
+            .iter()
+            .next()
+            .expect("test group has at least one item");
+        assert!(
+            matches!(first, rattler_build_recipe::stage0::Item::Conditional(_)),
+            "per-target extras must be wrapped in a Conditional in the generated recipe",
+        );
+        assert!(crate::v3::generated_recipe_uses_v3(&generated.recipe));
     }
 
     #[test]

@@ -55,6 +55,12 @@ pub struct WorkspaceTarget {
 pub struct PackageTarget {
     /// Dependencies for this target.
     pub dependencies: HashMap<SpecType, DependencyMap<PackageName, PixiSpec>>,
+
+    /// Optional dependency groups declared by the package, scoped to this
+    /// target. Top-level `[package.extra-dependencies.<group>]` lands on the
+    /// default target; per-target groups are declared as
+    /// `[package.target.<sel>.extra-dependencies.<group>]`.
+    pub extras: IndexMap<String, DependencyMap<PackageName, PixiSpec>>,
 }
 
 impl WorkspaceTarget {
