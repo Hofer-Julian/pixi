@@ -11,7 +11,6 @@ pub struct PackageManifest {
     /// Information about the build system for the package
     pub build: PackageBuild,
 
-    /// Defines the dependencies of the package. Per-target dependency groups
-    /// (extras) are accessed through `Targets` as well.
+    /// Defines the dependencies of the package
     pub targets: Targets<PackageTarget>,
 }

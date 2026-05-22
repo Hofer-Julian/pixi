@@ -199,10 +199,7 @@ pub struct Target {
     )]
     pub run_constraints: Option<OrderMap<SourcePackageName, PackageSpec>>,
 
-    /// Optional dependency groups (`extras`) declared by the source package
-    /// for this target. A top-level `[package.extra-dependencies.<group>]`
-    /// lands on the default target's extras; per-target groups are declared
-    /// as `[package.target.<sel>.extra-dependencies.<group>]`.
+    /// Optional dependency groups declared by the source package for this target.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(
         feature = "schemars",
