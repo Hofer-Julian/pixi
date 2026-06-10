@@ -116,7 +116,7 @@ impl EnvironmentHash {
     /// (manifest, lock file, env vars, activation scripts), so this
     /// flavour folds locked package URLs into the hash directly.
     ///
-    /// The activation cache uses [`Self::for_activation`] instead —
+    /// The activation cache uses [`Self::for_activation`] instead --
     /// see the docs there for why URL-based hashing is too coarse for
     /// that use case.
     pub fn from_environment(
@@ -256,7 +256,7 @@ impl LockedEnvironmentHash {
 
 impl LockedEnvironmentHash {
     /// Create an invalid hash for revalidation purposes
-    pub(crate) fn invalid() -> Self {
+    pub fn invalid() -> Self {
         LockedEnvironmentHash("invalid-hash".to_string())
     }
 }
@@ -275,6 +275,17 @@ pub struct PlatformData {
 }
 
 impl PlatformData {
+    /// A platform definition from a subdir and the virtual packages that
+    /// define it. Used by callers outside this module (e.g. `pixi global`)
+    /// that compute the two fields themselves rather than from a
+    /// [`PixiPlatform`].
+    pub fn new(subdir: Platform, virtual_packages: Vec<GenericVirtualPackage>) -> Self {
+        Self {
+            subdir,
+            virtual_packages,
+        }
+    }
+
     /// The conda subdir this platform targets, e.g. `linux-64`.
     pub fn subdir(&self) -> Platform {
         self.subdir
@@ -319,25 +330,27 @@ impl Display for PlatformData {
 /// lock-free via [`pixi_utils::EnvironmentFingerprint::read`], so it
 /// isn't part of this struct.
 #[derive(Serialize, Deserialize)]
-pub(crate) struct EnvironmentFile {
+pub struct EnvironmentFile {
     /// The path to the manifest file that was used to create the environment.
-    pub(crate) manifest_path: PathBuf,
+    pub manifest_path: PathBuf,
     /// The name of the environment.
-    pub(crate) environment_name: String,
+    pub environment_name: String,
     /// The version of the pixi that was used to create the environment.
-    pub(crate) pixi_version: String,
+    pub pixi_version: String,
     /// The hash of the lock file that was used to create the environment.
-    pub(crate) environment_lock_file_hash: LockedEnvironmentHash,
+    /// `pixi global` environments aren't validated against a workspace lock
+    /// file, so they record [`LockedEnvironmentHash::invalid`] here.
+    pub environment_lock_file_hash: LockedEnvironmentHash,
     /// The platform the environment was resolved with (subdir + the virtual
     /// packages the workspace declared for it). `None` on environments written
     /// by an older pixi, or when no declared platform runs on this machine.
     #[serde(default)]
-    pub(crate) resolved_platform: Option<PlatformData>,
+    pub resolved_platform: Option<PlatformData>,
     /// The minimum platform the installed packages actually require (the subdir
     /// plus only the virtual packages some resolved dependency depends on). Can
     /// be weaker than [`Self::resolved_platform`]. `None` as above.
     #[serde(default)]
-    pub(crate) minimum_supported_platform: Option<PlatformData>,
+    pub minimum_supported_platform: Option<PlatformData>,
 }
 
 /// The path to the environment file in the `conda-meta` directory of the
@@ -351,7 +364,7 @@ fn environment_file_path(environment_dir: &Path) -> PathBuf {
 /// Write information about the environment to a file in the environment
 /// directory. Used by the prefix updating to validate if it needs to be
 /// updated.
-pub(crate) fn write_environment_file(
+pub fn write_environment_file(
     environment_dir: &Path,
     env_file: EnvironmentFile,
 ) -> miette::Result<PathBuf> {
