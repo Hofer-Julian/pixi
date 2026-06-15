@@ -29,5 +29,5 @@ version = "*"
 hatchling = "*"
 
 [package.run-dependencies]
-rich = ">=13"
+rich = ">=15.0.0,<16"
 fib = { path = "fib" }

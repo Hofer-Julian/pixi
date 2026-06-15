@@ -1,6 +1,17 @@
-# Introducing pixi build
+# Introducing Pixi Build
 
-## A Python script with one dependency
+Pixi is a cross-platform, cross-language package manager and it is awesome!
+It is also binary-only.
+This means that as far as Pixi is concerned:
+- you tell Pixi which packages you want and where it should get it from
+- our extremely fast solver finds a combination of packages that satisfies your requirements
+- these packages are basically zipped archives that are unpacked in a folder -> that's what we call your environment
+- for each environment you typically define Pixi tasks, which you use to do something, typically using some of the packages you just installed
+
+What has been missing until now is a way to *build* a package natively within Pixi.
+We are working on making that possible, but first let me first show you with a simple example why that makes many workflows so much more powerful!
+
+## A Simple Python Script
 
 We start with a fresh workspace:
 
@@ -9,33 +20,38 @@ $ pixi init fibtable
 $ cd fibtable
 ```
 
-Add `rich` as a dependency:
+Then we add both `python` and the Python library `rich` as a dependency
 
 ```toml
 # pixi.toml
 --8<-- "docs/blog/intro-pixi-build/01-python/pixi.toml:dependencies"
 ```
 
-Then write the script:
+Let's also write a simple script to calculate the nth Fibonacci number:
 
 ```python
 # fibtable.py
 --8<-- "docs/blog/intro-pixi-build/01-python/fibtable.py:fib"
 ```
 
+Finally, we make use of our `rich` dependency by wrapping the result into a nice table.
+
 ```python
 # fibtable.py
 --8<-- "docs/blog/intro-pixi-build/01-python/fibtable.py:render"
 ```
 
-## Run it with a task
+When we then want to run our program, we typically want to first define a task.
+Tasks are great since you they serve as documentation in which ways your Pixi workspace can be used and they also allow you to compose multiple tasks into one workflow.
 
-Wire up a task so the script is easy to run:
+We start with a simple one that simply runs our Python script
 
 ```toml
 # pixi.toml
 --8<-- "docs/blog/intro-pixi-build/01-python/pixi.toml:tasks"
 ```
+
+And it works!
 
 ```console
 $ pixi run start
@@ -49,7 +65,10 @@ $ pixi run start
 └────┴────────┘
 ```
 
-## Rewrite the hot loop in Rust (for the performance, obviously)
+## Rewrite it in Rust
+
+The fibonacci function is now written in pure Python, which is probably slow?
+Without measuring anything, let's go ahead and rewrite it in Rust!
 
 Add a Rust crate inside the same workspace:
 
@@ -57,62 +76,83 @@ Add a Rust crate inside the same workspace:
 $ cargo init fib
 ```
 
+Now we add the same function to our Rust code:
+
 ```rust
 // fib/src/main.rs
 --8<-- "docs/blog/intro-pixi-build/02-rust-cli/fib/src/main.rs:fib"
 ```
 
-```console
-$ fib 30
-832040       # 0.001 s. The Python version also took 0.001 s. A triumph of engineering.
+We only have a single function that takes one number and returns one number.
+The simplest way of exposing that to the Python code to expose a CLI that takes the input number as argument and then prints the result to stdout.
+
+```rust
+// fib/src/main.rs
+--8<-- "docs/blog/intro-pixi-build/02-rust-cli/fib/src/main.rs:main"
 ```
 
-## Now Python has to find the binary
+However, how does the Python script know where to find the Rust binary?
+Since it isn't an installed package in our environment, we can't just expect it to be in the `PATH`.
 
-Point the Python script at the compiled binary:
+The best thing, I can think of right now, is to expect the binary at a certain location relative to the Python script.
+This is ugly but it works.
 
 ```python
 # fibtable.py
 --8<-- "docs/blog/intro-pixi-build/02-rust-cli/fibtable.py:locate"
 ```
 
+We can then run the Rust binary, and extract the output converted as integer.
+
 ```python
 # fibtable.py
 --8<-- "docs/blog/intro-pixi-build/02-rust-cli/fibtable.py:call"
 ```
 
-## And you have to rebuild it by hand
-
-Add `cargo` as a dependency and a task that builds the binary before running:
+In order to be able to build the Rust crate we need to add `rust` to our dependency list.
 
 ```toml
 # pixi.toml
 --8<-- "docs/blog/intro-pixi-build/02-rust-cli/pixi.toml:dependencies"
 ```
 
+Pixi tasks make the whole thing a bit more bearable.
+Now, at least we don't have to remember to pass `--release` when building the CLI and thanks to `depends-on` we can be sure the CLI is built every time 
+
 ```toml
 # pixi.toml
 --8<-- "docs/blog/intro-pixi-build/02-rust-cli/pixi.toml:tasks"
 ```
 
+When we now execute the `start` task everything is handled transparently:
+
 ```console
 $ pixi run start
+✨ Pixi task (build-cli): cargo build --release --manifest-path fib/Cargo.toml
    Compiling fib v0.1.0
     Finished `release` profile [optimized] target(s)
+
 ✨ Pixi task (start): python fibtable.py
    Fibonacci
-...
+┏━━━━┳━━━━━━━━┓
+┃  n ┃ fib(n) ┃
+┡━━━━╇━━━━━━━━┩
+│ 10 │     55 │
+│ 20 │   6765 │
+│ 30 │ 832040 │
+└────┴────────┘
 ```
 
-### The binary is not on `PATH`
+We made it work, but is it great?
+Absolutely not!
 
-### The path is different on Windows
+We had to hardcode the path to one of our dependencies in the code and that path was even different across operating systems.
+Dependencies that are needed for building are mixed with the ones needed for running.
+Like we don't need the Rust compiler to run a Rust executable.
+All of that makes it very difficult to hand your application to someone else so they can depend on it themselves.
+Even if it's only one team working on a single monorepo that workflow scales poorly.
 
-### `cargo` leaks into every environment
-
-### You still cannot hand it to anyone else
-
-## Enter pixi build
+## Enter Pixi Build
 
 Turn the workspace into something buildable by enabling the build backends:
 
@@ -121,7 +161,7 @@ Turn the workspace into something buildable by enabling the build backends:
 --8<-- "docs/blog/intro-pixi-build/03-pixi-build/pixi.toml:dependencies"
 ```
 
-## The Rust CLI becomes a package
+## The Rust CLI Becomes a Package
 
 Describe the `fib` crate as its own package:
 
@@ -130,7 +170,7 @@ Describe the `fib` crate as its own package:
 --8<-- "docs/blog/intro-pixi-build/03-pixi-build/fib/pixi.toml:package"
 ```
 
-## The Python app becomes a package
+## The Python App Becomes a Package
 
 Add the packaging metadata:
 
@@ -144,7 +184,7 @@ Add the packaging metadata:
 --8<-- "docs/blog/intro-pixi-build/03-pixi-build/pixi.toml:package"
 ```
 
-## One `pixi install` builds the whole graph
+## One `pixi install` Builds the Whole Graph
 
 The script now imports the built package instead of locating a binary:
 
@@ -168,7 +208,7 @@ $ pixi run start
 └────┴────────┘
 ```
 
-## A fast inner loop with the dev table
+## A Fast Inner Loop With the Dev Table
 
 Add a dev environment for the quick rebuild cycle:
 
@@ -182,7 +222,7 @@ $ pixi run cargo build --manifest-path fib/Cargo.toml
     Finished `dev` profile [unoptimized + debuginfo] target(s)
 ```
 
-## Ship it with pixi publish
+## Ship It With Pixi Publish
 
 ```console
 $ pixi publish --target-channel https://prefix.dev/your-channel
@@ -194,7 +234,7 @@ $ pixi publish --target-dir ./dist
 # or just build the .conda artifacts locally
 ```
 
-## Going further: build CPython from source too
+## Going Further: Build CPython From Source Too
 
 Swap in a source-built interpreter by adjusting the dependencies:
 

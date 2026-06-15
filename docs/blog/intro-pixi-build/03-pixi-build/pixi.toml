@@ -33,7 +33,7 @@ version = "*"
 hatchling = "*"
 
 [package.run-dependencies]
-rich = ">=13"
+rich = ">=15.0.0,<16"
 # A source dependency: fib is built from source and shipped with the app.
 fib = { path = "fib" }
 # --8<-- [end:package]
