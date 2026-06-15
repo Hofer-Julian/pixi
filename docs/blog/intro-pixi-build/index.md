@@ -2,21 +2,38 @@
 
 ## A Python script with one dependency
 
-```toml title="01-python/pixi.toml"
+We start with a fresh workspace:
+
+```console
+$ pixi init fibtable
+$ cd fibtable
+```
+
+Add `rich` as a dependency:
+
+```toml
+# pixi.toml
 --8<-- "docs/blog/intro-pixi-build/01-python/pixi.toml:dependencies"
 ```
 
-```python title="01-python/fibtable.py"
+Then write the script:
+
+```python
+# fibtable.py
 --8<-- "docs/blog/intro-pixi-build/01-python/fibtable.py:fib"
 ```
 
-```python title="01-python/fibtable.py"
+```python
+# fibtable.py
 --8<-- "docs/blog/intro-pixi-build/01-python/fibtable.py:render"
 ```
 
 ## Run it with a task
 
-```toml title="01-python/pixi.toml"
+Wire up a task so the script is easy to run:
+
+```toml
+# pixi.toml
 --8<-- "docs/blog/intro-pixi-build/01-python/pixi.toml:tasks"
 ```
 
@@ -34,7 +51,14 @@ $ pixi run start
 
 ## Rewrite the hot loop in Rust (for the performance, obviously)
 
-```rust title="02-rust-cli/fib/src/main.rs"
+Add a Rust crate inside the same workspace:
+
+```console
+$ cargo init fib
+```
+
+```rust
+// fib/src/main.rs
 --8<-- "docs/blog/intro-pixi-build/02-rust-cli/fib/src/main.rs:fib"
 ```
 
@@ -45,21 +69,29 @@ $ fib 30
 
 ## Now Python has to find the binary
 
-```python title="02-rust-cli/fibtable.py"
+Point the Python script at the compiled binary:
+
+```python
+# fibtable.py
 --8<-- "docs/blog/intro-pixi-build/02-rust-cli/fibtable.py:locate"
 ```
 
-```python title="02-rust-cli/fibtable.py"
+```python
+# fibtable.py
 --8<-- "docs/blog/intro-pixi-build/02-rust-cli/fibtable.py:call"
 ```
 
 ## And you have to rebuild it by hand
 
-```toml title="02-rust-cli/pixi.toml"
+Add `cargo` as a dependency and a task that builds the binary before running:
+
+```toml
+# pixi.toml
 --8<-- "docs/blog/intro-pixi-build/02-rust-cli/pixi.toml:dependencies"
 ```
 
-```toml title="02-rust-cli/pixi.toml"
+```toml
+# pixi.toml
 --8<-- "docs/blog/intro-pixi-build/02-rust-cli/pixi.toml:tasks"
 ```
 
@@ -82,29 +114,42 @@ $ pixi run start
 
 ## Enter pixi build
 
-```toml title="03-pixi-build/pixi.toml"
+Turn the workspace into something buildable by enabling the build backends:
+
+```toml
+# pixi.toml
 --8<-- "docs/blog/intro-pixi-build/03-pixi-build/pixi.toml:dependencies"
 ```
 
 ## The Rust CLI becomes a package
 
-```toml title="03-pixi-build/fib/pixi.toml"
+Describe the `fib` crate as its own package:
+
+```toml
+# fib/pixi.toml
 --8<-- "docs/blog/intro-pixi-build/03-pixi-build/fib/pixi.toml:package"
 ```
 
 ## The Python app becomes a package
 
-```toml title="03-pixi-build/pyproject.toml"
+Add the packaging metadata:
+
+```toml
+# pyproject.toml
 --8<-- "docs/blog/intro-pixi-build/03-pixi-build/pyproject.toml"
 ```
 
-```toml title="03-pixi-build/pixi.toml"
+```toml
+# pixi.toml
 --8<-- "docs/blog/intro-pixi-build/03-pixi-build/pixi.toml:package"
 ```
 
 ## One `pixi install` builds the whole graph
 
-```python title="03-pixi-build/src/fibtable/__init__.py"
+The script now imports the built package instead of locating a binary:
+
+```python
+# src/fibtable/__init__.py
 --8<-- "docs/blog/intro-pixi-build/03-pixi-build/src/fibtable/__init__.py:call"
 ```
 
@@ -125,7 +170,10 @@ $ pixi run start
 
 ## A fast inner loop with the dev table
 
-```toml title="03-pixi-build/pixi.toml"
+Add a dev environment for the quick rebuild cycle:
+
+```toml
+# pixi.toml
 --8<-- "docs/blog/intro-pixi-build/03-pixi-build/pixi.toml:dev"
 ```
 
@@ -148,7 +196,10 @@ $ pixi publish --target-dir ./dist
 
 ## Going further: build CPython from source too
 
-```toml title="04-freethreading/pixi.toml"
+Swap in a source-built interpreter by adjusting the dependencies:
+
+```toml
+# pixi.toml
 --8<-- "docs/blog/intro-pixi-build/04-freethreading/pixi.toml:dependencies"
 ```
 
