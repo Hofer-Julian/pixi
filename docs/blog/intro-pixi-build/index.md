@@ -154,23 +154,16 @@ Even if it's only one team working on a single monorepo that workflow scales poo
 
 ## Enter Pixi Build
 
-Turn the workspace into something buildable by enabling the build backends:
+What you want instead is that every application and library that you develop on your system translates to its own package that Pixi is aware of.
+That way you get all the goodies that you are used to from binary packages like a solver that ensures that your packages are actually compatible, but also new ones like Pixi taking care that dependencies are properly cached and built in the correct order.
 
-```toml
-# pixi.toml
---8<-- "docs/blog/intro-pixi-build/03-pixi-build/pixi.toml:dependencies"
-```
 
-## The Rust CLI Becomes a Package
-
-Describe the `fib` crate as its own package:
 
 ```toml
 # fib/pixi.toml
 --8<-- "docs/blog/intro-pixi-build/03-pixi-build/fib/pixi.toml:package"
 ```
 
-## The Python App Becomes a Package
 
 Add the packaging metadata:
 
@@ -182,6 +175,13 @@ Add the packaging metadata:
 ```toml
 # pixi.toml
 --8<-- "docs/blog/intro-pixi-build/03-pixi-build/pixi.toml:package"
+```
+
+Turn the workspace into something buildable by enabling the build backends:
+
+```toml
+# pixi.toml
+--8<-- "docs/blog/intro-pixi-build/03-pixi-build/pixi.toml:dependencies"
 ```
 
 ## One `pixi install` Builds the Whole Graph
