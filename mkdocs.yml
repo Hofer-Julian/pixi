@@ -203,6 +203,8 @@ nav:
       - Pixi Configuration: reference/pixi_configuration.md
       - CLI: reference/cli/pixi.md
       - Environment Variables: reference/environment_variables.md
+  - Blog:
+      - Introducing pixi build: blog/intro-pixi-build/index.md
   - Misc:
       - Changelog: CHANGELOG.md
       - Pixi Vision: misc/vision.md
@@ -224,6 +226,16 @@ validation:
 not_in_nav: |
   reference/cli/
   partials/
+
+# The blog post embeds these source files via `--8<--`; they are read from disk
+# by pymdownx.snippets, so they must not also be rendered as site pages.
+exclude_docs: |
+  blog/intro-pixi-build/01-python/
+  blog/intro-pixi-build/02-rust-cli/
+  blog/intro-pixi-build/03-pixi-build/
+  blog/intro-pixi-build/04-freethreading/
+  blog/intro-pixi-build/verify.py
+  blog/intro-pixi-build/.gitignore
 
 plugins:
   - redirects:

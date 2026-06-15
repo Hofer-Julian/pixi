@@ -1,0 +1,8 @@
+[package]
+name = "fib"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "fib"
+path = "src/main.rs"
