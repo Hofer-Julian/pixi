@@ -11,7 +11,9 @@ fn fib(n: u64) -> u64 {
 }
 // --8<-- [end:fib]
 
+// --8<-- [start:main]
 fn main() {
     let n: u64 = env::args().nth(1).unwrap().parse().unwrap();
     println!("{}", fib(n));
 }
+// --8<-- [end:main]
