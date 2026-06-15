@@ -1,14 +1,14 @@
+# --8<-- [start:workspace]
 [workspace]
 channels = ["https://prefix.dev/conda-forge"]
 name = "fibtable"
 platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
 preview = ["pixi-build"]
 
-# --8<-- [start:dependencies]
 [dependencies]
 # Build and install our app from source; fib is built and comes along too.
 fibtable = { path = "." }
-# --8<-- [end:dependencies]
+# --8<-- [end:workspace]
 
 [tasks]
 start = "fibtable"
@@ -24,10 +24,7 @@ fib = { path = "fib" }
 [package]
 name = "fibtable"
 version = "0.1.0"
-
-[package.build.backend]
-name = "pixi-build-python"
-version = "*"
+build.backend.name = "pixi-build-python"
 
 [package.host-dependencies]
 hatchling = "*"

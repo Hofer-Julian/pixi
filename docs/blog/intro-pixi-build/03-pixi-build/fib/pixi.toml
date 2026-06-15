@@ -2,8 +2,5 @@
 [package]
 name = "fib"
 version = "0.1.0"
-
-[package.build.backend]
-name = "pixi-build-rust"
-version = "*"
+build.backend.name = "pixi-build-rust"
 # --8<-- [end:package]
