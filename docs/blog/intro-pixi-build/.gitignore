@@ -1,0 +1,5 @@
+.pixi/
+pixi.lock
+dist/
+target/
+Cargo.lock

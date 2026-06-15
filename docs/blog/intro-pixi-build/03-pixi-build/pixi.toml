@@ -1,0 +1,39 @@
+[workspace]
+channels = ["https://prefix.dev/conda-forge"]
+name = "fibtable"
+platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
+preview = ["pixi-build"]
+
+# --8<-- [start:dependencies]
+[dependencies]
+# Build and install our app from source; fib is built and comes along too.
+fibtable = { path = "." }
+# --8<-- [end:dependencies]
+
+[tasks]
+start = "fibtable"
+
+# --8<-- [start:dev]
+[dev]
+# rust + cargo land in the environment without rebuilding the whole package,
+# so `pixi run cargo build --manifest-path fib/Cargo.toml` is a fast loop.
+fib = { path = "fib" }
+# --8<-- [end:dev]
+
+# --8<-- [start:package]
+[package]
+name = "fibtable"
+version = "0.1.0"
+
+[package.build.backend]
+name = "pixi-build-python"
+version = "*"
+
+[package.host-dependencies]
+hatchling = "*"
+
+[package.run-dependencies]
+rich = ">=13"
+# A source dependency: fib is built from source and shipped with the app.
+fib = { path = "fib" }
+# --8<-- [end:package]

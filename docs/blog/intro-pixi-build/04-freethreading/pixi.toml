@@ -1,0 +1,33 @@
+[workspace]
+channels = ["https://prefix.dev/conda-forge"]
+name = "fibtable"
+# CPython-from-source currently builds on Linux and macOS only.
+platforms = ["linux-64", "osx-64", "osx-arm64"]
+preview = ["pixi-build"]
+
+# --8<-- [start:dependencies]
+[dependencies]
+fibtable = { path = "." }
+# Swap the prebuilt conda interpreter for a free-threaded CPython, built from source.
+python = { git = "https://github.com/python/cpython", subdirectory = "Tools/pixi-packages/freethreading", rev = "59b41c8" }
+# --8<-- [end:dependencies]
+
+[tasks]
+start = "fibtable"
+# Show that the GIL really is gone.
+gil = """python -c 'import sys; print("free-threaded:", not sys._is_gil_enabled())'"""
+
+[package]
+name = "fibtable"
+version = "0.1.0"
+
+[package.build.backend]
+name = "pixi-build-python"
+version = "*"
+
+[package.host-dependencies]
+hatchling = "*"
+
+[package.run-dependencies]
+rich = ">=13"
+fib = { path = "fib" }

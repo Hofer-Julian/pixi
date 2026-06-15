@@ -1,0 +1,18 @@
+# --8<-- [start:full]
+[workspace]
+channels = ["https://prefix.dev/conda-forge"]
+name = "fibtable"
+platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
+version = "0.1.0"
+
+# --8<-- [start:dependencies]
+[dependencies]
+python = ">=3.11"
+rich = ">=13"
+# --8<-- [end:dependencies]
+
+# --8<-- [start:tasks]
+[tasks]
+start = "python fibtable.py"
+# --8<-- [end:tasks]
+# --8<-- [end:full]
