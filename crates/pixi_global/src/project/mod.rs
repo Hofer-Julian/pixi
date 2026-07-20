@@ -1537,6 +1537,7 @@ impl Project {
                         .with_allow_hard_links(self.config.allow_hard_links)
                         .with_allow_ref_links(self.config.allow_ref_links)
                         .with_offline(self.config.offline())
+                        .with_prefer_local(self.config.prefer_local())
                         .execute_link_scripts(match self.config.run_post_link_scripts() {
                             RunPostLinkScripts::Insecure => true,
                             RunPostLinkScripts::False => false,

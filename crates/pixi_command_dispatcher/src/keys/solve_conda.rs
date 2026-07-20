@@ -7,6 +7,7 @@
 //! limiting and reporter wiring.
 
 use std::{
+    collections::HashMap,
     hash::{Hash, Hasher},
     mem,
     sync::Arc,
@@ -30,11 +31,12 @@ use tracing::instrument;
 
 use crate::{
     SolveCondaEnvironmentSpec, SourceMetadata,
-    compute_data::{HasGateway, HasGatewayReporter},
+    compute_data::{HasGateway, HasGatewayReporter, HasPackageCache},
     reporter::WrappingGatewayReporter,
     solve_binary::SolveCondaExt,
     solve_conda::SolveCondaEnvironmentError,
 };
+use pixi_compute_network::HasPreferLocal;
 use pixi_compute_reporters::OperationId;
 
 /// Input to [`SolveCondaKey`]. All fields participate in the Key's
@@ -180,6 +182,9 @@ pub enum SolveCondaKeyError {
 
     #[error(transparent)]
     Gateway(Arc<GatewayError>),
+
+    #[error("failed to read the package cache")]
+    CacheIndex(#[source] Arc<std::io::Error>),
 }
 
 impl From<SolveCondaEnvironmentError> for SolveCondaKeyError {
@@ -301,6 +306,25 @@ impl Key for SolveCondaKey {
 
         // Build the full solve spec and hand off to ctx.solve_conda
         // (semaphore + reporter lifecycle).
+        // In prefer-local mode the solver may only pick packages that can be
+        // installed without network access. The index is taken per solve so
+        // that packages downloaded earlier in this run are seen.
+        let excluded_candidates = if ctx.global_data().prefer_local() {
+            let index = ctx
+                .global_data()
+                .package_cache()
+                .index()
+                .map_err(|err| SolveCondaKeyError::CacheIndex(Arc::new(err)))?;
+            crate::prefer_local::prefer_local_exclusions(
+                &index,
+                binary_repodata
+                    .iter()
+                    .flat_map(|repo_data| repo_data.iter()),
+            )
+        } else {
+            HashMap::new()
+        };
+
         let conda_spec = SolveCondaEnvironmentSpec {
             name: None,
             source_specs: spec.source_specs.clone(),
@@ -316,6 +340,7 @@ impl Key for SolveCondaKey {
             strategy: spec.strategy,
             channel_priority: spec.channel_priority,
             exclude_newer: spec.exclude_newer.clone(),
+            excluded_candidates,
         };
 
         let solve_started = std::time::Instant::now();

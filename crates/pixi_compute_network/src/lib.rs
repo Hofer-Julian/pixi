@@ -37,3 +37,21 @@ impl HasOffline for DataStore {
         self.try_get::<Offline>().is_some_and(|offline| offline.0)
     }
 }
+
+/// Whether solving is restricted to packages that are already available
+/// locally. Unlike [`Offline`] this does not change what may touch the
+/// network, only which candidates a solve is allowed to pick.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct PreferLocal(pub bool);
+
+/// Access the prefer-local flag. Absent data means "unrestricted".
+pub trait HasPreferLocal {
+    fn prefer_local(&self) -> bool;
+}
+
+impl HasPreferLocal for DataStore {
+    fn prefer_local(&self) -> bool {
+        self.try_get::<PreferLocal>()
+            .is_some_and(|prefer_local| prefer_local.0)
+    }
+}

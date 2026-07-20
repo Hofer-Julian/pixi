@@ -59,6 +59,10 @@ pixi workspace channel remove [OPTIONS] <CHANNEL>...
 :  Run without network access, using only cached data. Commands fail if data is missing from the cache. Pass `--offline=false` to override an `offline` setting from the configuration
 <br>**env**: `PIXI_OFFLINE`
 <br>**options**: `y`, `yes`, `t`, `true`, `on`, `1`, `n`, `no`, `f`, `false`, `off`, `0`
+- <a id="arg---prefer-local" href="#arg---prefer-local">`--prefer-local=<PREFER_LOCAL>`</a>
+:  Restrict solving to packages that are already available locally, so a solve that succeeds can be installed without downloading anything. Implied by `--offline`. Pass `--prefer-local=false` to override a `prefer-local` setting from the configuration
+<br>**env**: `PIXI_PREFER_LOCAL`
+<br>**options**: `y`, `yes`, `t`, `true`, `on`, `1`, `n`, `no`, `f`, `false`, `off`, `0`
 - <a id="arg---tls-root-certs" href="#arg---tls-root-certs">`--tls-root-certs <TLS_ROOT_CERTS>`</a>
 :  Which TLS root certificates to use: 'webpki' (bundled Mozilla roots) or 'system' (system store)
 <br>**env**: `PIXI_TLS_ROOT_CERTS`

@@ -10,7 +10,7 @@
 //! per-call reporter.
 
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     fmt,
     hash::{Hash, Hasher},
     mem,
@@ -35,7 +35,8 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use xxhash_rust::xxh3::Xxh3;
 
-use crate::SolveCondaEnvironmentSpec;
+use pixi_compute_network::HasPreferLocal;
+
 use crate::cache::markers::BuildBackendsDir;
 use crate::compute_data::{HasGateway, HasGatewayReporter, HasInstantiateBackendReporter};
 use crate::injected_config::{ChannelConfigKey, ToolBuildEnvironmentKey};
@@ -43,6 +44,7 @@ use crate::install_binary::install_binary_records;
 use crate::reporter::{InstantiateBackendReporter, WrappingGatewayReporter};
 use crate::solve_binary::SolveCondaExt;
 use crate::solve_conda::SolveCondaEnvironmentError;
+use crate::{SolveCondaEnvironmentSpec, compute_data::HasPackageCache};
 use pixi_compute_cache_dirs::CacheDirsExt;
 use pixi_compute_reporters::OperationId;
 
@@ -203,6 +205,9 @@ pub enum EphemeralEnvError {
 
     #[error("failed to install the environment at {0}")]
     Install(PathBuf, #[source] Arc<InstallerError>),
+
+    #[error("failed to read the package cache")]
+    CacheIndex(#[source] Arc<std::io::Error>),
 }
 
 impl Key for EphemeralEnvKey {
@@ -221,7 +226,16 @@ impl Key for EphemeralEnvKey {
         // pixi-build-cmake / pixi-build-python — even when the
         // prefix on disk was already provisioned by a previous run.
         //
-        let cache_key = spec.cache_key();
+        // A prefer-local solve can pick older packages than an unrestricted one
+        // would. The prefix is content-addressed and shared across processes,
+        // so the two must not land on the same key: otherwise the restricted
+        // result would be served to later unrestricted runs, which would
+        // silently keep using an older backend.
+        let prefer_local = ctx.global_data().prefer_local();
+        let cache_key = match prefer_local {
+            true => format!("{}-local", spec.cache_key()),
+            false => spec.cache_key(),
+        };
         let prefix_path = ctx.cache_dir::<BuildBackendsDir>().await.join(&cache_key);
         if let Some(cached) = read_cached_marker(prefix_path.as_std_path()).await {
             return Ok(Arc::new(cached));
@@ -242,6 +256,27 @@ impl Key for EphemeralEnvKey {
             .map_err(Arc::new)?;
 
         // 4. Build a binary-only SolveCondaEnvironmentSpec and solve.
+        //
+        // Backend environments go through the same solver as everything else,
+        // so prefer-local mode restricts them too. This is only reached on a
+        // cold backend: a previously provisioned one returns from the marker
+        // fast path above without solving at all.
+        let excluded_candidates = if prefer_local {
+            match ctx.global_data().package_cache().index() {
+                Ok(index) => crate::prefer_local::prefer_local_exclusions(
+                    &index,
+                    binary_repodata
+                        .iter()
+                        .flat_map(|repo_data| repo_data.iter()),
+                ),
+                Err(err) => {
+                    return Err(Arc::new(EphemeralEnvError::CacheIndex(Arc::new(err))));
+                }
+            }
+        } else {
+            HashMap::new()
+        };
+
         let solve_spec = SolveCondaEnvironmentSpec {
             name: None,
             source_specs: DependencyMap::default(),
@@ -257,6 +292,7 @@ impl Key for EphemeralEnvKey {
             strategy: spec.strategy,
             channel_priority: spec.channel_priority,
             exclude_newer: spec.exclude_newer.clone(),
+            excluded_candidates,
         };
         let records = ctx
             .solve_conda(solve_spec)

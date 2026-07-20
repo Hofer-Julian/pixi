@@ -81,6 +81,14 @@ pub async fn execute(args: Args) -> miette::Result<()> {
         .locate()?
         .with_cli_config(args.config.clone());
 
+    // `pixi upgrade` rewrites version requirements in the manifest, so it
+    // refuses to derive them from a restricted view rather than quietly
+    // recording a bound that reflects this machine's cache.
+    //
+    // A channel served from the local filesystem is fully visible even under
+    // prefer-local, since every package it lists is installable without the
+    // network. Only a remote channel makes the view partial, so only that is
+    // refused.
     let mut workspace = workspace.modify()?;
 
     let features = {

@@ -60,6 +60,9 @@ pub struct CommandDispatcherBuilder {
     tool_platform: Option<(Platform, Vec<GenericVirtualPackage>)>,
     execute_link_scripts: bool,
     offline: bool,
+
+    /// Whether solving is restricted to locally available packages.
+    prefer_local: bool,
     channel_config: Option<ChannelConfig>,
     enabled_protocols: Option<EnabledProtocols>,
     /// Allow symbolic links during package installation.
@@ -312,6 +315,16 @@ impl CommandDispatcherBuilder {
         Self { offline, ..self }
     }
 
+    /// Sets whether solving is restricted to packages that are already
+    /// available locally. Unlike offline mode this does not forbid network
+    /// access, it only limits which candidates a solve may pick.
+    pub fn with_prefer_local(self, prefer_local: bool) -> Self {
+        Self {
+            prefer_local,
+            ..self
+        }
+    }
+
     /// Sets the channel configuration used to resolve channel names.
     /// Injected into the compute engine as [`ChannelConfigKey`].
     pub fn with_channel_config(self, channel_config: ChannelConfig) -> Self {
@@ -493,6 +506,7 @@ impl CommandDispatcherBuilder {
             })
             .with_data(RootDir(root_dir))
             .with_data(pixi_compute_network::Offline(self.offline))
+            .with_data(pixi_compute_network::PreferLocal(self.prefer_local))
             .with_spawn_hook(Arc::new(pixi_compute_reporters::OperationIdSpawnHook));
         // Register each per-key reporter the caller supplied; a missing
         // reporter is treated as "no progress UI for this kind of work."

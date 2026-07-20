@@ -251,7 +251,7 @@ rattler_repodata_gateway = { version = "0.30", default-features = false }
 rattler_s3 = { version = "0.2", default-features = false }
 rattler_shell = { version = "0.27", default-features = false }
 rattler_solve = { version = "7.2", default-features = false }
-rattler_upload = { version = "0.8", default-features = false, features = [
+rattler_upload = { version = "0.9", default-features = false, features = [
   "s3",
   "sigstore-sign",
 ] }
@@ -268,6 +268,27 @@ rattler_build_types = { version = "0.1.8" }
 rattler_build_variant_config = { version = "0.1.9" }
 
 [patch.crates-io]
+# Depends on https://github.com/conda/rattler/pull/2609.
+# Replace with a released version once that lands.
+rattler = { git = "https://github.com/Hofer-Julian/rattler", branch = "excluded-candidates" }
+rattler_cache = { git = "https://github.com/Hofer-Julian/rattler", branch = "excluded-candidates" }
+rattler_conda_types = { git = "https://github.com/Hofer-Julian/rattler", branch = "excluded-candidates" }
+rattler_config = { git = "https://github.com/Hofer-Julian/rattler", branch = "excluded-candidates" }
+rattler_digest = { git = "https://github.com/Hofer-Julian/rattler", branch = "excluded-candidates" }
+rattler_index = { git = "https://github.com/Hofer-Julian/rattler", branch = "excluded-candidates" }
+rattler_lock = { git = "https://github.com/Hofer-Julian/rattler", branch = "excluded-candidates" }
+rattler_menuinst = { git = "https://github.com/Hofer-Julian/rattler", branch = "excluded-candidates" }
+rattler_networking = { git = "https://github.com/Hofer-Julian/rattler", branch = "excluded-candidates" }
+rattler_package_streaming = { git = "https://github.com/Hofer-Julian/rattler", branch = "excluded-candidates" }
+rattler_repodata_gateway = { git = "https://github.com/Hofer-Julian/rattler", branch = "excluded-candidates" }
+rattler_s3 = { git = "https://github.com/Hofer-Julian/rattler", branch = "excluded-candidates" }
+rattler_shell = { git = "https://github.com/Hofer-Julian/rattler", branch = "excluded-candidates" }
+rattler_upload = { git = "https://github.com/Hofer-Julian/rattler", branch = "excluded-candidates" }
+rattler_solve = { git = "https://github.com/Hofer-Julian/rattler", branch = "excluded-candidates" }
+rattler_virtual_packages = { git = "https://github.com/Hofer-Julian/rattler", branch = "excluded-candidates" }
+
+file_url = { git = "https://github.com/Hofer-Julian/rattler", branch = "excluded-candidates" }
+simple_spawn_blocking = { git = "https://github.com/Hofer-Julian/rattler", branch = "excluded-candidates" }
 version-ranges = { git = "https://github.com/astral-sh/pubgrub", rev = "d8efd77673c9a90792da9da31b6c0da7ea8a324b" }
 
 # Redirect crates.io's `reqwest-middleware` to a local shim that re-exports

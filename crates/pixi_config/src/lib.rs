@@ -741,6 +741,21 @@ pub struct ConfigCli {
     )]
     pub offline: Option<bool>,
 
+    /// Restrict solving to packages that are already available locally, so a
+    /// solve that succeeds can be installed without downloading anything.
+    /// Implied by `--offline`. Pass `--prefer-local=false` to override a
+    /// `prefer-local` setting from the configuration.
+    #[arg(
+        long,
+        env = "PIXI_PREFER_LOCAL",
+        num_args = 0..=1,
+        require_equals = true,
+        default_missing_value = "true",
+        value_parser = clap::builder::BoolishValueParser::new(),
+        help_heading = consts::CLAP_CONFIG_OPTIONS
+    )]
+    pub prefer_local: Option<bool>,
+
     /// Which TLS root certificates to use: 'webpki' (bundled Mozilla roots) or 'system' (system store).
     #[arg(long, env = "PIXI_TLS_ROOT_CERTS", help_heading = consts::CLAP_CONFIG_OPTIONS)]
     pub tls_root_certs: Option<TlsRootCerts>,
@@ -1159,6 +1174,13 @@ pub struct Config {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub offline: Option<bool>,
 
+    /// If set to true, solving only considers packages that are already
+    /// available locally: present in the package cache, or served from a
+    /// local channel. Implied by `offline`.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prefer_local: Option<bool>,
+
     #[serde(default)]
     #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub mirrors: HashMap<Url, Vec<Url>>,
@@ -1289,6 +1311,7 @@ impl Default for Config {
             tls_no_verify: None,
             tls_root_certs: None,
             offline: None,
+            prefer_local: None,
             mirrors: HashMap::new(),
             loaded_from: Vec::new(),
             channel_config: default_channel_config(),
@@ -1359,6 +1382,7 @@ impl From<ConfigCli> for Config {
             tls_no_verify: if cli.tls_no_verify { Some(true) } else { None },
             tls_root_certs: cli.tls_root_certs,
             offline: cli.offline,
+            prefer_local: cli.prefer_local,
             authentication_override_file: cli.auth_file,
             pypi_config: cli
                 .pypi_keyring_provider
@@ -1813,6 +1837,7 @@ impl Config {
             "experimental",
             "experimental.use-environment-activation-cache",
             "mirrors",
+            "prefer-local",
             "offline",
             "pinning-strategy",
             "proxy-config",
@@ -1867,6 +1892,7 @@ impl Config {
             tls_no_verify: other.tls_no_verify.or(self.tls_no_verify),
             tls_root_certs: other.tls_root_certs.or(self.tls_root_certs),
             offline: other.offline.or(self.offline),
+            prefer_local: other.prefer_local.or(self.prefer_local),
             authentication_override_file: other
                 .authentication_override_file
                 .or(self.authentication_override_file),
@@ -1942,6 +1968,18 @@ impl Config {
     /// cached data.
     pub fn offline(&self) -> bool {
         self.offline.unwrap_or(false)
+    }
+
+    /// Whether solving is restricted to packages that are already available
+    /// locally (defaults to false, but to true in offline mode).
+    ///
+    /// Offline mode implies this, because a package that has to be downloaded
+    /// cannot be installed without network access anyway. The implication is
+    /// applied to the already-resolved values, so an explicit `prefer-local`
+    /// from any layer wins over an `offline` from any other layer. In other
+    /// words: explicit beats implied, whichever layer each came from.
+    pub fn prefer_local(&self) -> bool {
+        self.prefer_local.unwrap_or_else(|| self.offline())
     }
 
     /// The user-set `tls-root-certs` value, if any.
@@ -2087,6 +2125,15 @@ impl Config {
             }
             "offline" => {
                 self.offline = value.map(|v| v.parse()).transpose().into_diagnostic()?;
+            }
+            "prefer-local" => {
+                self.prefer_local = value
+                    .map(|v| {
+                        v.parse().map_err(|_| {
+                            miette::miette!("`prefer-local` must be `true` or `false`, got `{v}`")
+                        })
+                    })
+                    .transpose()?;
             }
             "tls-root-certs" => {
                 self.tls_root_certs = value
@@ -2665,6 +2712,7 @@ UNUSED = "unused"
             tls_no_verify: true,
             tls_root_certs: Some(TlsRootCerts::System),
             offline: Some(true),
+            prefer_local: Some(true),
             auth_file: None,
             pypi_keyring_provider: Some(KeyringProvider::Subprocess),
             concurrent_solves: Some(8),
@@ -2700,6 +2748,7 @@ UNUSED = "unused"
             tls_no_verify: false,
             tls_root_certs: None,
             offline: None,
+            prefer_local: None,
             auth_file: Some(PathBuf::from("path.json")),
             pypi_keyring_provider: None,
             concurrent_solves: None,
@@ -2765,6 +2814,63 @@ UNUSED = "unused"
         assert_eq!(config.offline, Some(true));
         config.set("offline", None).unwrap();
         assert_eq!(config.offline, None);
+    }
+
+    /// `prefer-local` is its own setting that `offline` implies. The implication
+    /// is applied after each option is resolved through the layers, so an
+    /// explicit `prefer-local` always beats an implied one, no matter which
+    /// layer each came from.
+    #[test]
+    fn test_prefer_local_config() {
+        // Defaults to false, and is not enabled by anything on its own.
+        assert!(!Config::default().prefer_local());
+
+        // Set directly.
+        let (config, _) = Config::from_toml("prefer-local = true", None).unwrap();
+        assert_eq!(config.prefer_local, Some(true));
+        assert!(config.prefer_local());
+
+        // Implied by offline.
+        let (config, _) = Config::from_toml("offline = true", None).unwrap();
+        assert_eq!(config.prefer_local, None);
+        assert!(config.prefer_local());
+
+        // An explicit `prefer-local = false` survives the implication, which is
+        // the escape hatch back to pre-`prefer-local` offline behaviour.
+        let (config, _) = Config::from_toml("offline = true\nprefer-local = false", None).unwrap();
+        assert!(config.offline());
+        assert!(!config.prefer_local());
+
+        // Explicit beats implied across layers too: `prefer-local = false` in a
+        // config file is not overridden by `--offline` on the CLI.
+        let merged = Config {
+            prefer_local: Some(false),
+            ..Default::default()
+        }
+        .merge_config(Config::from(ConfigCli {
+            offline: Some(true),
+            ..Default::default()
+        }));
+        assert!(merged.offline());
+        assert!(!merged.prefer_local());
+
+        // And the reverse: `--prefer-local` works without offline mode, leaving
+        // network access alone.
+        let merged = Config::default().merge_config(Config::from(ConfigCli {
+            prefer_local: Some(true),
+            ..Default::default()
+        }));
+        assert!(!merged.offline());
+        assert!(merged.prefer_local());
+
+        // `pixi config set prefer-local true` roundtrip.
+        let mut config = Config::default();
+        config
+            .set("prefer-local", Some("true".to_string()))
+            .unwrap();
+        assert_eq!(config.prefer_local, Some(true));
+        config.set("prefer-local", None).unwrap();
+        assert_eq!(config.prefer_local, None);
     }
 
     /// The `--offline` flag is tri-state: absent, `--offline` (true), and
@@ -2935,6 +3041,7 @@ UNUSED = "unused"
             tls_no_verify: Some(true),
             tls_root_certs: Some(TlsRootCerts::System),
             offline: Some(true),
+            prefer_local: Some(true),
             detached_environments: Some(DetachedEnvironments::Path(PathBuf::from("/path/to/envs"))),
             concurrency: ConcurrencyConfig {
                 solves: 5,

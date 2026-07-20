@@ -183,6 +183,38 @@ Offline mode works best after the caches have been populated by running the same
 --8<-- "docs/source_files/pixi_config_tomls/main_config.toml:offline"
 ```
 
+### `prefer-local`
+
+When set to `true`, solving only considers conda packages that are already available locally, so a solve that succeeds can be installed without downloading anything.
+You can also enable this from the CLI with `--prefer-local` or by setting the `PIXI_PREFER_LOCAL` environment variable.
+
+A package counts as available locally when it is already in the package cache, or when it is served from a local (`file://`) channel, which needs no download either way.
+Anything else is excluded from the solve, and if an exclusion is what makes a solve impossible the error names the packages that were ruled out.
+
+`offline` implies `prefer-local`, because a package that has to be downloaded cannot be installed without network access anyway.
+The implication applies to the resolved values, so an explicit `prefer-local` from any layer wins over an `offline` from any other layer.
+Set `prefer-local = false` alongside `offline = true` to keep offline mode while solving against the full cached repodata.
+
+Used on its own without `offline`, repodata is still refreshed from the network, so the exclusion reasons reflect what the channels currently offer.
+That combination is useful to avoid re-downloading large packages while still solving against current metadata.
+
+`prefer-local` only affects **solving**. It does not prevent downloads.
+
+That distinction matters most when no solve happens at all: if `pixi.lock` already satisfies the manifest, or you pass `--frozen` or `--locked`, `pixi install` installs exactly what the lock file names and downloads anything missing from the cache, `prefer-local` or not.
+Use `--offline` when the requirement is that nothing touches the network.
+
+All commands otherwise behave as they normally do, including the ones that write to the manifest.
+`pixi add` and `pixi upgrade` record version bounds derived from the versions they resolved, so under `prefer-local` those bounds describe what was available locally rather than what the channels offer.
+`pixi update` warns when it writes `pixi.lock` for the same reason.
+
+!!! note "Conda packages only"
+
+    The restriction applies to conda packages. PyPI dependencies are resolved by uv, which pixi runs with offline connectivity but cannot restrict to cached distributions, so a solve that succeeds may still require network access for PyPI.
+
+```toml title="config.toml"
+--8<-- "docs/source_files/pixi_config_tomls/main_config.toml:prefer-local"
+```
+
 ### `authentication-override-file`
 
 Override from where the authentication information is loaded.

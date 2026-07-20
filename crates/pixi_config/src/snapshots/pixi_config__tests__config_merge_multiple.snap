@@ -1,6 +1,6 @@
 ---
 source: crates/pixi_config/src/lib.rs
-assertion_line: 3037
+assertion_line: 3216
 expression: debug
 ---
 Config {
@@ -21,6 +21,7 @@ Config {
     ),
     tls_root_certs: None,
     offline: None,
+    prefer_local: None,
     mirrors: {
         Url {
             scheme: "https",
