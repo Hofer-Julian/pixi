@@ -312,8 +312,6 @@ impl PackageBuilder {
         self
     }
 
-    /// Enable materialization for this package.
-    /// When enabled, a real .conda file will be created containing index.json and paths.json
     /// Adds a file to the package. Only materialized packages carry files.
     pub fn with_file(
         mut self,
