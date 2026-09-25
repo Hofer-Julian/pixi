@@ -568,10 +568,12 @@ A local `allow` requires an approval outside the checkout, bound to the reposito
 Copying a checkout or editing its configuration cannot grant execution permission. A local `deny` needs no approval.
 `--offline` also applies to detector discovery and installation.
 Detectors inherit the host environment during activation and execution, including non-UTF-8 values on Unix.
+Detectors execute only for the native platform. A foreign target, including one selected through `PIXI_OVERRIDE_PLATFORM`, uses target virtual packages and explicit overrides without executing detectors.
+For detector-defined names, override values use `version[=build_string]`, with build string `0` by default; an empty value means absence. Standardized names retain their built-in override rules. Invalid values are errors, including in inspection commands such as `pixi info`.
 
 ```toml title="config.toml"
 [virtual-package-detectors]
-# How long a detector, and separately its activation, may run. At most 300.
+# How long a detector, and separately its activation, may run. From 1 to 300 seconds.
 timeout-seconds = 30
 
 # Decisions per registration origin, the channel's base URL.
