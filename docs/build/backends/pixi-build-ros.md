@@ -79,6 +79,7 @@ This includes:
 
 - **Package name and version**: Automatically used if not specified in `pixi.toml`
 - **Description**: Uses the description from `package.xml`
+- **License**: Converts `<license>` entries to SPDX, treats `/` as `OR`, and preserves custom `LicenseRef-` expressions. Multiple entries are joined with `OR`; unrecognized free-text names become custom license references.
 - **Maintainers**: Extracted from maintainer fields in `package.xml`
 - **Homepage**: From URL fields with type "website" in `package.xml`
 - **Repository**: From URL fields with type "repository" in `package.xml`

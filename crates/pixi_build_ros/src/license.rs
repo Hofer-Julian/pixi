@@ -93,10 +93,14 @@ const MODE: spdx::ParseMode = spdx::ParseMode {
     allow_unknown: false,
 };
 
-/// The canonical identifier: GNU licenses as -only / -or-later.
-fn canonical(id: spdx::LicenseId, or_later: bool) -> String {
+/// Append the canonical identifier: GNU licenses as -only / -or-later.
+fn append_canonical(out: &mut String, id: spdx::LicenseId, or_later: bool) {
     if !id.is_gnu() {
-        return format!("{}{}", id.name, if or_later { "+" } else { "" });
+        out.push_str(id.name);
+        if or_later {
+            out.push('+');
+        }
+        return;
     }
     let base = id
         .name
@@ -104,30 +108,35 @@ fn canonical(id: spdx::LicenseId, or_later: bool) -> String {
         .trim_end_matches("-only")
         .trim_end_matches("-or-later");
     let later = or_later || id.name.ends_with('+') || id.name.ends_with("-or-later");
-    format!("{base}{}", if later { "-or-later" } else { "-only" })
+    out.push_str(base);
+    out.push_str(if later { "-or-later" } else { "-only" });
 }
 
 /// A valid SPDX expression, with canonical identifiers.
 fn normalize(s: &str) -> Option<String> {
     let expr = spdx::Expression::parse_mode(s, MODE).ok()?;
-    let mut ids = Vec::new();
+    let mut out = String::with_capacity(s.len());
+    let mut last = 0;
+    // Requirements retain source order, even though operators are in postfix order.
     for req in expr.requirements() {
-        let spdx::LicenseItem::Spdx { id, or_later } = req.req.license else {
-            return None;
-        };
-        // the span leaves out a trailing `+` (GPL-3.0+), which `canonical` covers
+        let start = req.span.start as usize;
         let mut end = req.span.end as usize;
-        if s[end..].starts_with('+') {
-            end += 1;
+        for (index, part) in s[last..start].split('/').enumerate() {
+            if index > 0 {
+                out.push_str(" OR ");
+            }
+            out.push_str(part);
         }
-        ids.push((req.span.start as usize, end, canonical(id, or_later)));
-    }
-    // rebuilt from the spans: replacing text would also hit `GPL-2.0` inside `LGPL-2.0-only`
-    ids.sort_by_key(|(start, ..)| *start);
-    let (mut out, mut last) = (String::new(), 0);
-    for (start, end, canonical) in ids {
-        out.push_str(&s[last..start]);
-        out.push_str(&canonical);
+        match req.req.license {
+            spdx::LicenseItem::Spdx { id, or_later } => {
+                // The span excludes postfix `+`, which append_canonical handles.
+                if s[end..].starts_with('+') {
+                    end += 1;
+                }
+                append_canonical(&mut out, id, or_later);
+            }
+            spdx::LicenseItem::Other(_) => out.push_str(&s[start..end]),
+        }
         last = end;
     }
     out.push_str(&s[last..]);
